@@ -61,6 +61,9 @@ protected:
 	void AutoFireReset();
 	//////////////////////////
 
+	/// 아이템 위젯 뜨게하는 것 관련 함수
+	bool TraceUnderCrosshairs(FHitResult& OutHitResult);
+
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;

@@ -10,6 +10,8 @@
 #include "Engine/SkeletalMeshSocket.h"
 #include "DrawDebugHelpers.h"
 #include "Particles/ParticleSystemComponent.h"
+#include "Item.h"
+#include "Components/WidgetComponent.h"
 
 // Sets default values
 AShooterCharacter::AShooterCharacter():
@@ -378,13 +380,61 @@ void AShooterCharacter::AutoFireReset()
 	}
 }
 
+bool AShooterCharacter::TraceUnderCrosshairs(FHitResult& OutHitResult)
+{
+	// 뷰포트 사이즈찾기
+	FVector2D ViewportSize;
+	if (GEngine && GEngine->GameViewport)
+	{
+		GEngine->GameViewport->GetViewportSize(ViewportSize);
+	}
+
+	// 뷰포트사이즈로 크로스헤어 위치 구하기
+	FVector2D CrosshairLocation = FVector2D(ViewportSize.X / 2.f, ViewportSize.Y / 2.f);
+	FVector CrosshairWorldPosition;
+	FVector CrosshairWorldDirection;
+
+	// 크로스헤어 포지션 스크린포지션에서 월드포지션으로 바꾸기
+	bool bScreenToWorld = UGameplayStatics::DeprojectScreenToWorld(
+		UGameplayStatics::GetPlayerController(this, 0),
+		CrosshairLocation,
+		CrosshairWorldPosition,
+		CrosshairWorldDirection);
+
+	if (bScreenToWorld)
+	{
+		FVector Start = CrosshairWorldPosition;
+		FVector End = CrosshairWorldPosition + CrosshairWorldDirection * 50'000.f;
+		GetWorld()->LineTraceSingleByChannel(OutHitResult, Start, End, ECollisionChannel::ECC_Visibility);
+
+		if (OutHitResult.bBlockingHit)
+			return true;
+	}
+
+	return false;
+}
+
 // Called every frame
 void AShooterCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	CameraInterpZoom(DeltaTime);
+	CameraInterpZoom(DeltaTime); // 줌할때 카메라 FOV설정
 	SetLookRates(); // 조준할때안할때의 키보드 방향 돌리기 감도변경 (마우스 x)
-	CalculateCrosshairSpread(DeltaTime);
+	CalculateCrosshairSpread(DeltaTime); // 크로스 헤어 벌어지는 정도 설정
+
+	// 아이템 위젯 띄우게 하기 위한것
+	FHitResult ItemTraceResult;
+	TraceUnderCrosshairs(ItemTraceResult);
+	if (ItemTraceResult.bBlockingHit)
+	{
+		AItem* HitItem = Cast<AItem>(ItemTraceResult.GetActor());
+		if (HitItem && HitItem->GetPickupWidget()) // 트레이스해서 맞은게 아이템이면 nullptr아님
+		{
+			// 아이템의 픽업위젯을 보여줘야함
+			HitItem->GetPickupWidget()->SetVisibility(true);
+		}
+	}
+	///////////////////////////////
 
 }
 
