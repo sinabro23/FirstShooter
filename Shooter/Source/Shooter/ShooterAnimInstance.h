@@ -41,4 +41,7 @@ private:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement", Meta = (AllowPrivateAccess = "true"))
 	float LastMovementOffsetYaw; // 멈출때 offset이 0이 돼서 앞으로 멈추는 애니메이션만 실행됐음 그걸 방지하기위해 마지막 오프셋값 저장할 새로운 변수.
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Movement", Meta = (AllowPrivateAccess = "true"))
+	bool bAiming; // 조준하고있는지아닌지
 };

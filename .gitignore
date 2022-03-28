@@ -73,3 +73,12 @@ Plugins/*/Intermediate/*
 # Cache files for the editor to use
 DerivedDataCache/*
 Shooter/Content/ParagonLtBelica
+Shooter/Content/Audio
+Shooter/Content/Blueprints
+Shooter/Content/Fx
+Shooter/Content/Maps
+Shooter/Content/Materials
+Shooter/Content/Meshes
+Shooter/Content/Sequences
+Shooter/Content/StarterContent
+Shooter/Content/Textures

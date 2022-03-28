@@ -38,7 +38,6 @@ void UShooterAnimInstance::UpdateAnimationProperties(float DeltaTime)
 		{
 			LastMovementOffsetYaw = MovementOffsetYaw; // 멈추기 전까지의 오프셋을 저장해놓음
 		}
-
 		//FString RotationMessage = FString::Printf(TEXT("Base Aim Rotation : %f"), AimRotation.Yaw);
 		//FString MovementMessage = FString::Printf(TEXT("Movement Rotation : %f"), MovementRotation.Yaw);
 		//FString OffsetMessage = FString::Printf(TEXT("MovementOffsetYaw : %f"), MovementOffsetYaw);
@@ -46,6 +45,8 @@ void UShooterAnimInstance::UpdateAnimationProperties(float DeltaTime)
 		//{
 		//	GEngine->AddOnScreenDebugMessage(1, 0.2f, FColor::White, OffsetMessage);
 		//}
+
+		bAiming = ShooterCharacter->GetAiming();
 	}
 }
 
