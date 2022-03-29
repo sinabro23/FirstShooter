@@ -12,6 +12,8 @@
 #include "Particles/ParticleSystemComponent.h"
 #include "Item.h"
 #include "Components/WidgetComponent.h"
+#include "Components/WidgetComponent.h"
+#include "Weapon.h"
 
 // Sets default values
 AShooterCharacter::AShooterCharacter():
@@ -44,7 +46,9 @@ AShooterCharacter::AShooterCharacter():
 	//자동사격 관련
 	AutomaticFireRate(0.1f),// 연사속도
 	bShouldFire(true),
-	bFireButtonPressed(false)
+	bFireButtonPressed(false),
+	//// 아이템 트레이스 변수
+	bShouldTraceForItems(false)
 {
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
@@ -80,7 +84,23 @@ void AShooterCharacter::BeginPlay()
 		CameraDefaultFOV = GetFollowCamera()->FieldOfView;
 		CameraCurrentFOV = CameraDefaultFOV;
 	}
+
+	SpawnDefaultWeapon();
 	
+}
+
+// Called every frame
+void AShooterCharacter::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+	CameraInterpZoom(DeltaTime); // 줌할때 카메라 FOV설정
+	
+	SetLookRates(); // 조준할때안할때의 키보드 방향 돌리기 감도변경 (마우스 x)
+	
+	CalculateCrosshairSpread(DeltaTime); // 크로스 헤어 벌어지는 정도 설정
+
+	TraceForItems(); // 오버랩된 아이템 개수 체크 해서 Item을 Trace할지 설정
+
 }
 
 void AShooterCharacter::MoveForward(float Value)
@@ -195,57 +215,36 @@ void AShooterCharacter::FIreWeapon()
 
 bool AShooterCharacter::GetBeamEndLocation(const FVector& MuzzleSocketLocation, FVector& OutBeamLocation)
 {
-	// 크로스헤어위치를 구하기위해 뷰포트 사이즈 구하기
-	FVector2D ViewportSize;
-	if (GEngine && GEngine->GameViewport)
+	// 크로스헤어로부터 트레이스
+	FHitResult CrosshairHitResult;
+	bool bCrosshairHit = TraceUnderCrosshairs(CrosshairHitResult, OutBeamLocation);
+	if (bCrosshairHit)
 	{
-		GEngine->GameViewport->GetViewportSize(ViewportSize);
+		// 잠정적인 빔 로케이션 (총구로부터 트레이스 해야함 아직)
+		OutBeamLocation = CrosshairHitResult.Location;
 	}
-
-	// 블루프린트 클래스로 만든 HUD 이벤트그래프 확인
-	FVector2D CrosshairLocation(ViewportSize.X / 2.f, ViewportSize.Y / 2.f); // 뷰포트 한가운데 VECTOR2D
-	FVector CrosshairWorldPosition;
-	FVector CrosshairWorldDirection;
-
-	// 크로스헤어 스크린 포지션을 월드포지션으로 구하기.
-	bool bScreenToWorld = UGameplayStatics::DeprojectScreenToWorld(
-		UGameplayStatics::GetPlayerController(this, 0),
-		CrosshairLocation,
-		CrosshairWorldPosition,
-		CrosshairWorldDirection);
-
-	if (bScreenToWorld) // 크로스헤어위치를 월드포지션으로 가져오는게 성공했다면.
+	else // 크로스헤어로부터 트레이스해서 충돌 없음
 	{
-		FHitResult ScreenTraceHit;
-		const FVector Start = CrosshairWorldPosition; // 크로스헤어의 월드포지션이 시작점임
-		const FVector End = CrosshairWorldPosition + CrosshairWorldDirection * 50'000.f;
+		// OutBeamLocation은 라인트레이스의 End 로케이션으로 설정됨. TraceUnderCrosshairs함수에의해
+	}
+	///////////////////////////////////
+	
+	
+	// 총구로부터 트레이스
+	FHitResult WeaponTraceHit;
+	const FVector WeaponTraceStart = MuzzleSocketLocation;
+	const FVector StartToEnd = OutBeamLocation - MuzzleSocketLocation; // 방향벡터
+	const FVector WeaponTraceEnd = MuzzleSocketLocation + StartToEnd * 1.25f; 
+	
+	GetWorld()->LineTraceSingleByChannel(
+		WeaponTraceHit,
+		WeaponTraceStart,
+		WeaponTraceEnd,
+		ECollisionChannel::ECC_Visibility);
 
-		OutBeamLocation = End; // 총알 지나간 흔적자국 / 안맞으면 그냥 사장거리 끝
-		
-		GetWorld()->LineTraceSingleByChannel(ScreenTraceHit, Start, End, ECollisionChannel::ECC_Visibility);
-
-		if (ScreenTraceHit.bBlockingHit)
-		{
-			OutBeamLocation = ScreenTraceHit.Location; // 무언가 맞으면 맞은 위치가 End
-
-
-		}
-
-		// 총구로부터 두번째 트레이스
-		FHitResult WeaponTraceHit;
-		const FVector WeaponTraceStart = MuzzleSocketLocation;
-		const FVector WeaponTraceEnd = OutBeamLocation; // 무언가 맞았으면 맞은위치, 아니면 사장거리 끝으로 되어있음
-		GetWorld()->LineTraceSingleByChannel(
-			WeaponTraceHit,
-			WeaponTraceStart,
-			WeaponTraceEnd,
-			ECollisionChannel::ECC_Visibility);
-
-		if (WeaponTraceHit.bBlockingHit) // 총구로부터 트레이스해서 무언가 맞았다면
-		{
-			OutBeamLocation = WeaponTraceHit.Location;
-		}
-
+	if (WeaponTraceHit.bBlockingHit) // 총구로부터 트레이스해서 무언가 맞았다면
+	{
+		OutBeamLocation = WeaponTraceHit.Location;
 		return true;
 	}
 
@@ -380,7 +379,7 @@ void AShooterCharacter::AutoFireReset()
 	}
 }
 
-bool AShooterCharacter::TraceUnderCrosshairs(FHitResult& OutHitResult)
+bool AShooterCharacter::TraceUnderCrosshairs(FHitResult& OutHitResult, FVector& OutHitLocation)
 {
 	// 뷰포트 사이즈찾기
 	FVector2D ViewportSize;
@@ -405,38 +404,70 @@ bool AShooterCharacter::TraceUnderCrosshairs(FHitResult& OutHitResult)
 	{
 		FVector Start = CrosshairWorldPosition;
 		FVector End = CrosshairWorldPosition + CrosshairWorldDirection * 50'000.f;
+		OutHitLocation = End;
 		GetWorld()->LineTraceSingleByChannel(OutHitResult, Start, End, ECollisionChannel::ECC_Visibility);
 
 		if (OutHitResult.bBlockingHit)
+		{
+			OutHitLocation = OutHitResult.Location;
 			return true;
+		}
 	}
 
 	return false;
 }
 
-// Called every frame
-void AShooterCharacter::Tick(float DeltaTime)
+void AShooterCharacter::TraceForItems()
 {
-	Super::Tick(DeltaTime);
-	CameraInterpZoom(DeltaTime); // 줌할때 카메라 FOV설정
-	SetLookRates(); // 조준할때안할때의 키보드 방향 돌리기 감도변경 (마우스 x)
-	CalculateCrosshairSpread(DeltaTime); // 크로스 헤어 벌어지는 정도 설정
-
-	// 아이템 위젯 띄우게 하기 위한것
-	FHitResult ItemTraceResult;
-	TraceUnderCrosshairs(ItemTraceResult);
-	if (ItemTraceResult.bBlockingHit)
+	if (bShouldTraceForItems) // IncrementOverlappedItemCount함수로 Item클래스에서 오버랩 델레게이트로 설정됨
 	{
-		AItem* HitItem = Cast<AItem>(ItemTraceResult.GetActor());
-		if (HitItem && HitItem->GetPickupWidget()) // 트레이스해서 맞은게 아이템이면 nullptr아님
+		FHitResult ItemTraceResult;
+		FVector HitLocation;
+		TraceUnderCrosshairs(ItemTraceResult, HitLocation);
+		if (ItemTraceResult.bBlockingHit)
 		{
-			// 아이템의 픽업위젯을 보여줘야함
-			HitItem->GetPickupWidget()->SetVisibility(true);
+			AItem* HitItem = Cast<AItem>(ItemTraceResult.GetActor());
+			
+			if (HitItem && HitItem->GetPickupWidget()) // 트레이스해서 맞은게 아이템이면 nullptr아님
+			{
+				// 아이템의 픽업위젯을 보여줘야함
+				HitItem->GetPickupWidget()->SetVisibility(true);
+			}
+		
+			if (TraceHitItemLastFrame) // 이미 저장한 아이템 포인터가 있다면
+			{
+				if (HitItem != TraceHitItemLastFrame) // 새로운 아이템이 트레이스 되거나 TraceHitItemLastFrame이 nullptr인 상황
+				{
+					TraceHitItemLastFrame->GetPickupWidget()->SetVisibility(false);
+				}
+			}
+
+			TraceHitItemLastFrame = HitItem; // 트레이스한 아이템 포인터 저장
 		}
 	}
-	///////////////////////////////
-
+	else if (TraceHitItemLastFrame) // 오버랩된 아이템은없고 기존에 저장된 아이템클래스포인터가 nullptr이 아닌경우 기존거 위젯을 꺼줘야함
+	{
+		TraceHitItemLastFrame->GetPickupWidget()->SetVisibility(false);
+	}
 }
+
+void AShooterCharacter::SpawnDefaultWeapon()
+{
+	if (DefaultWeaponClass)
+	{
+		AWeapon* DefaultWeapon = GetWorld()->SpawnActor<AWeapon>(DefaultWeaponClass);
+		const USkeletalMeshSocket* HandSocket = GetMesh()->GetSocketByName(FName("RightHandSocket")); // 무기붙이려고 스켈레탈에 만든 소켓
+
+		if (HandSocket)
+		{
+			HandSocket->AttachActor(DefaultWeapon, GetMesh());
+		}
+		
+		EquippedWeapon = DefaultWeapon;
+	}
+}
+
+
 
 // Called to bind functionality to input
 void AShooterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -464,5 +495,19 @@ void AShooterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 float AShooterCharacter::GetCrosshairSpreadMultiplier()
 {
 	return CrosshairSpreadMultiplier;
+}
+
+void AShooterCharacter::IncrementOverlappedItemCount(int8 Amount)
+{
+	if (OverlappedItemCount + Amount <= 0)
+	{
+		OverlappedItemCount = 0;
+		bShouldTraceForItems = false;
+	}
+	else // 오버랩된 아이템이 있다는것
+	{
+		OverlappedItemCount += Amount;
+		bShouldTraceForItems = true;
+	}
 }
 

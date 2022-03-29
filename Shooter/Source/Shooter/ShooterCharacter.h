@@ -61,8 +61,14 @@ protected:
 	void AutoFireReset();
 	//////////////////////////
 
-	/// 아이템 위젯 뜨게하는 것 관련 함수
-	bool TraceUnderCrosshairs(FHitResult& OutHitResult);
+	/// 크로스헤어로부터 라인트레이스해서 충돌체크하는 함수
+	bool TraceUnderCrosshairs(FHitResult& OutHitResult, FVector& OutHitLocation);
+
+	/// 오버랩된 아이템 개수(OverlappedItemCount)가 1개 이상이면 아이템 트레이스할 함수
+	void TraceForItems();
+
+	// 기본무기 스폰
+	void SpawnDefaultWeapon();
 
 public:	
 	// Called every frame
@@ -160,6 +166,20 @@ private:// 할당들은 웬만하면 다 블루프린트에서 했음
 	FTimerHandle AutoFireTimer; // 격발 사이의 타이머
 	//////////////////////////////
 
+	// 아이템 트레이스 변수
+	bool bShouldTraceForItems; //매프레임마다 아이템을 Trace해야하면 True
+	int8 OverlappedItemCount; // 오버랩된 아이템 개수
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Items", meta = (AllowPrivateAccess = "true"))
+	class AItem* TraceHitItemLastFrame; 
+	/////////////////////////////////////
+
+
+	/// 무기 장착 변수
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAccess = "true"))
+	class AWeapon* EquippedWeapon; // 현재 캐릭터가 장착하고 있는 무기
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<AWeapon> DefaultWeaponClass; // 기본무기로 블루프린트에서 설정할것
+
 
 public:
 	FORCEINLINE USpringArmComponent* GetSpringArm() const { return CameraBoom; }
@@ -168,4 +188,9 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	float GetCrosshairSpreadMultiplier();
+
+	FORCEINLINE int8 GetOverlappedItemCount() const { return OverlappedItemCount; }
+
+	// 오버랩된 아이템 개수 설정 및 bShouldTraceForItem 설정 (오버랩된 아이템이 하나라도 있으면 Trace해야함)
+	void IncrementOverlappedItemCount(int8 Amount);
 };
