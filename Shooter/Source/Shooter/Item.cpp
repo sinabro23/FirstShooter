@@ -11,7 +11,8 @@
 AItem::AItem() : 
 	ItemName(FString("Default")),
 	ItemCount(0),
-	ItemRarity(EItemRarity::EIR_Common)
+	ItemRarity(EItemRarity::EIR_Common),
+	ItemState(EItemState::EIS_PickUp)
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
@@ -46,6 +47,9 @@ void AItem::BeginPlay()
 	// AreaSphere 오버랩관련
 	AreaSphere->OnComponentBeginOverlap.AddDynamic(this, &AItem::OnSphereOverlap);
 	AreaSphere->OnComponentEndOverlap.AddDynamic(this, &AItem::OnSphereEndOverlap);
+
+	// 아이템 상태에 따른 아이템 설정들(콜리전같은것)
+	SetItemProperties(ItemState);
 }
 
 void AItem::OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -112,11 +116,87 @@ void AItem::SetActiveStars()
 	}
 }
 
+void AItem::SetItemProperties(EItemState State)
+{
+	switch (State)
+	{
+	case EItemState::EIS_PickUp:
+		// 메쉬관련 설정
+		ItemMesh->SetSimulatePhysics(false);
+		ItemMesh->SetEnableGravity(false);
+		ItemMesh->SetVisibility(true);
+		ItemMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+		ItemMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+		// AreaSphere(위젯뜨는범위 콜리전)
+		AreaSphere->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Overlap);
+		AreaSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+
+		//CollsionBox(라인트레이싱 당하는 콜리전)
+		CollsionBox->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+		CollsionBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
+		CollsionBox->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		break;
+	case EItemState::EIS_EquipInterping:
+		break;
+	case EItemState::EIS_PickedUp:
+		break;
+	case EItemState::EIS_Equipped: // 손에 들고 있을때
+
+		PickupWidget->SetVisibility(false);
+
+		// 메쉬관련 설정
+		ItemMesh->SetSimulatePhysics(false);
+		ItemMesh->SetEnableGravity(false);
+		ItemMesh->SetVisibility(true);
+		ItemMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+		ItemMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+		// AreaSphere(위젯뜨는범위 콜리전) : 손에들고있을때 필요없음
+		AreaSphere->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+		AreaSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+		//CollsionBox(라인트레이싱 당하는 콜리전)
+		CollsionBox->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+		CollsionBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		break;
+	case EItemState::EIS_Falling:
+
+		// 메쉬 바닥으로 떨어지게 하기 위해
+		ItemMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		ItemMesh->SetSimulatePhysics(true);
+		ItemMesh->SetEnableGravity(true);
+		ItemMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		ItemMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+		ItemMesh->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldStatic, ECollisionResponse::ECR_Block);
+
+		// AreaSphere(위젯뜨는범위 콜리전) : 떨어질때 필요없음
+		AreaSphere->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+		AreaSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+		//CollsionBox(라인트레이싱 당하는 콜리전) : 떨어질때 필요없음
+		CollsionBox->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+		CollsionBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+		break;
+	case EItemState::EIS_Max:
+		break;
+	default:
+		break;
+	}
+}
+
 
 // Called every frame
 void AItem::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+}
+
+void AItem::SetItemState(EItemState State)
+{
+	ItemState = State;
+	SetItemProperties(State);
 }
 

@@ -19,6 +19,18 @@ enum class EItemRarity : uint8
 	EIR_Max UMETA(DisplayName = "DefaultMax")
 };
 
+UENUM(BlueprintType)
+enum class EItemState : uint8
+{
+	EIS_PickUp UMETA(DisplayName = "PickUp"), // 바닥에 놓여져있는상태, 콜리전 다켜지고 위젯 보여줌
+	EIS_EquipInterping UMETA(DisplayName = "EquipInterping"), // 무기 획득해서 내쪽으로 오는 과정
+	EIS_PickedUp UMETA(DisplayName = "PickedUp"), // 무기 얻어서 들고있지는 않고 인벤에있는상태
+	EIS_Equipped UMETA(DisplayName = "Equipped"), // 무기 얻어서 들고있는상태
+	EIS_Falling UMETA(DisplayName = "Falling"), // 무기 버려서 떨어지는상태
+
+	EIS_Max UMETA(DisplayName = "DefaultMax")
+};
+
 UCLASS()
 class SHOOTER_API AItem : public AActor
 {
@@ -38,6 +50,8 @@ protected:
 	void OnSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 
 	void SetActiveStars(); // 희귀도에 따라서 별 끄고 켜기
+
+	void SetItemProperties(EItemState State); // 스테이트에따른 아이템의 컴포넌트 값들 설정, SetItemState에서 같이실행됨
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -67,7 +81,16 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
 	TArray<bool> ActiveStars; // 별끄고켜기위한 bool array
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
+	EItemState ItemState; // 아이템의 현재 상태
+
 public:
 	FORCEINLINE UWidgetComponent* GetPickupWidget() const { return PickupWidget; }
+	FORCEINLINE USphereComponent* GetAreaSphere() const { return AreaSphere; }
+	FORCEINLINE UBoxComponent* GetCollsionBox() const { return CollsionBox; }
+	FORCEINLINE EItemState GetItemState() const { return ItemState; }
+	FORCEINLINE USkeletalMeshComponent* GetItemMesh() const { return ItemMesh; }
+
+	void SetItemState(EItemState State); // SetItemProperties도 같이함
 
 };

@@ -12,8 +12,9 @@
 #include "Particles/ParticleSystemComponent.h"
 #include "Item.h"
 #include "Components/WidgetComponent.h"
-#include "Components/WidgetComponent.h"
 #include "Weapon.h"
+#include "Components/SphereComponent.h"
+#include "Components/BoxComponent.h"
 
 // Sets default values
 AShooterCharacter::AShooterCharacter():
@@ -85,7 +86,7 @@ void AShooterCharacter::BeginPlay()
 		CameraCurrentFOV = CameraDefaultFOV;
 	}
 
-	SpawnDefaultWeapon();
+	EquipWeapon(SpawnDefaultWeapon()); // 기본무기 생성하고 장착하기
 	
 }
 
@@ -426,23 +427,23 @@ void AShooterCharacter::TraceForItems()
 		TraceUnderCrosshairs(ItemTraceResult, HitLocation);
 		if (ItemTraceResult.bBlockingHit)
 		{
-			AItem* HitItem = Cast<AItem>(ItemTraceResult.GetActor());
+			TraceHitItem = Cast<AItem>(ItemTraceResult.GetActor());
 			
-			if (HitItem && HitItem->GetPickupWidget()) // 트레이스해서 맞은게 아이템이면 nullptr아님
+			if (TraceHitItem && TraceHitItem->GetPickupWidget()) // 트레이스해서 맞은게 아이템이면 nullptr아님
 			{
 				// 아이템의 픽업위젯을 보여줘야함
-				HitItem->GetPickupWidget()->SetVisibility(true);
+				TraceHitItem->GetPickupWidget()->SetVisibility(true);
 			}
 		
 			if (TraceHitItemLastFrame) // 이미 저장한 아이템 포인터가 있다면
 			{
-				if (HitItem != TraceHitItemLastFrame) // 새로운 아이템이 트레이스 되거나 TraceHitItemLastFrame이 nullptr인 상황
+				if (TraceHitItem != TraceHitItemLastFrame) // 새로운 아이템이 트레이스 되거나 TraceHitItemLastFrame이 nullptr인 상황
 				{
 					TraceHitItemLastFrame->GetPickupWidget()->SetVisibility(false);
 				}
 			}
 
-			TraceHitItemLastFrame = HitItem; // 트레이스한 아이템 포인터 저장
+			TraceHitItemLastFrame = TraceHitItem; // 트레이스한 아이템 포인터 저장
 		}
 	}
 	else if (TraceHitItemLastFrame) // 오버랩된 아이템은없고 기존에 저장된 아이템클래스포인터가 nullptr이 아닌경우 기존거 위젯을 꺼줘야함
@@ -451,20 +452,63 @@ void AShooterCharacter::TraceForItems()
 	}
 }
 
-void AShooterCharacter::SpawnDefaultWeapon()
+AWeapon* AShooterCharacter::SpawnDefaultWeapon()
 {
 	if (DefaultWeaponClass)
 	{
-		AWeapon* DefaultWeapon = GetWorld()->SpawnActor<AWeapon>(DefaultWeaponClass);
-		const USkeletalMeshSocket* HandSocket = GetMesh()->GetSocketByName(FName("RightHandSocket")); // 무기붙이려고 스켈레탈에 만든 소켓
+		return GetWorld()->SpawnActor<AWeapon>(DefaultWeaponClass);
+	}
 
+	return nullptr;
+}
+
+void AShooterCharacter::EquipWeapon(AWeapon* WeaponToEquip)
+{
+	if (WeaponToEquip)
+	{
+		const USkeletalMeshSocket* HandSocket = GetMesh()->GetSocketByName(FName("RightHandSocket")); // 무기붙이려고 스켈레탈에 만든 소켓
 		if (HandSocket)
 		{
-			HandSocket->AttachActor(DefaultWeapon, GetMesh());
+			HandSocket->AttachActor(WeaponToEquip, GetMesh());
 		}
-		
-		EquippedWeapon = DefaultWeapon;
+
+		EquippedWeapon = WeaponToEquip;
+		EquippedWeapon->SetItemState(EItemState::EIS_Equipped);
 	}
+}
+
+void AShooterCharacter::DropWeapon()
+{
+	if (EquippedWeapon)
+	{
+		//DetachFromComponent()에 넣어줘야하는 인자.
+		FDetachmentTransformRules DetachmentTransformRules(EDetachmentRule::KeepWorld, true);
+		EquippedWeapon->GetItemMesh()->DetachFromComponent(DetachmentTransformRules); // 여기까지 하면 손에서 떨어져서 그자리에 그대로있음
+
+		EquippedWeapon->SetItemState(EItemState::EIS_Falling);
+		EquippedWeapon->ThrowWeapon();
+	}
+}
+
+void AShooterCharacter::SelectButtonPressed()
+{
+	if (TraceHitItem)
+	{
+		AWeapon* TraceHitWeapon = Cast<AWeapon>(TraceHitItem);
+		SwapWeapon(TraceHitWeapon);
+	}
+}
+
+void AShooterCharacter::SelectButtonReleased()
+{
+}
+
+void AShooterCharacter::SwapWeapon(AWeapon* WeaponToSwap)
+{
+	DropWeapon();
+	EquipWeapon(WeaponToSwap);
+	TraceHitItem = nullptr;
+	TraceHitItemLastFrame = nullptr;
 }
 
 
@@ -483,6 +527,9 @@ void AShooterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 
 	PlayerInputComponent->BindAction("AimingButton", EInputEvent::IE_Pressed, this, &AShooterCharacter::AimingButtonPressed);
 	PlayerInputComponent->BindAction("AimingButton", EInputEvent::IE_Released, this, &AShooterCharacter::AimingButtonReleased);
+
+	PlayerInputComponent->BindAction("Select", EInputEvent::IE_Pressed, this, &AShooterCharacter::SelectButtonPressed);
+	PlayerInputComponent->BindAction("Select", EInputEvent::IE_Released, this, &AShooterCharacter::SelectButtonReleased);
 
 	PlayerInputComponent->BindAxis("MoveForward", this, &AShooterCharacter::MoveForward);
 	PlayerInputComponent->BindAxis("MoveRight", this, &AShooterCharacter::MoveRight);

@@ -67,8 +67,21 @@ protected:
 	/// 오버랩된 아이템 개수(OverlappedItemCount)가 1개 이상이면 아이템 트레이스할 함수
 	void TraceForItems();
 
-	// 기본무기 스폰
-	void SpawnDefaultWeapon();
+	// 기본무기 스폰 
+	class AWeapon* SpawnDefaultWeapon();
+
+	// 무기장착해서 메쉬에 붙이기
+	void EquipWeapon(AWeapon* WeaponToEquip); 
+
+	// 장착중인 무기 바닥으로 버리기
+	void DropWeapon();
+
+	// 'E'키 버튼
+	void SelectButtonPressed();
+	void SelectButtonReleased();
+
+	// 현재 들고있는 무기 버리고 새로운 무기 주음
+	void SwapWeapon(AWeapon* WeaponToSwap);
 
 public:	
 	// Called every frame
@@ -176,10 +189,13 @@ private:// 할당들은 웬만하면 다 블루프린트에서 했음
 
 	/// 무기 장착 변수
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAccess = "true"))
-	class AWeapon* EquippedWeapon; // 현재 캐릭터가 장착하고 있는 무기
+	AWeapon* EquippedWeapon; // 현재 캐릭터가 장착하고 있는 무기
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	TSubclassOf<AWeapon> DefaultWeaponClass; // 기본무기로 블루프린트에서 설정할것
 
+	// 현재 TraceForItems함수로 인해 Trace된 아이템 저장 (nullptr일수 있음)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAccess = "true"))
+	AItem* TraceHitItem;
 
 public:
 	FORCEINLINE USpringArmComponent* GetSpringArm() const { return CameraBoom; }
