@@ -6,13 +6,21 @@
 #include "Components/WidgetComponent.h"
 #include "Components/SphereComponent.h"
 #include "ShooterCharacter.h"
+#include "Camera/CameraComponent.h"
 
 // Sets default values
 AItem::AItem() : 
 	ItemName(FString("Default")),
 	ItemCount(0),
 	ItemRarity(EItemRarity::EIR_Common),
-	ItemState(EItemState::EIS_PickUp)
+	ItemState(EItemState::EIS_PickUp),
+	ZCurveTime(0.7f),
+	ItemInterpStartLocation(FVector(0.f)),
+	CameraTargetLocation(FVector(0.f)),
+	bInterping(false),
+	ItemInterpX(0.f),
+	ItemInterpY(0.f),
+	InterpInitialYawOffset(0.f)
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
@@ -138,6 +146,23 @@ void AItem::SetItemProperties(EItemState State)
 		CollsionBox->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 		break;
 	case EItemState::EIS_EquipInterping:
+		PickupWidget->SetVisibility(false);
+		
+		// 메쉬관련 설정
+		ItemMesh->SetSimulatePhysics(false);
+		ItemMesh->SetEnableGravity(false);
+		ItemMesh->SetVisibility(true);
+		ItemMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+		ItemMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		
+		// AreaSphere(위젯뜨는범위 콜리전) : Interp될때 필요없음
+		AreaSphere->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+		AreaSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+		//CollsionBox(라인트레이싱 당하는 콜리전)
+		CollsionBox->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+		CollsionBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
 		break;
 	case EItemState::EIS_PickedUp:
 		break;
@@ -186,11 +211,69 @@ void AItem::SetItemProperties(EItemState State)
 	}
 }
 
+void AItem::FinishInterping() // interp타이머 끝나면 호출될 함수
+{
+	bInterping = false;
+	if (Character)
+	{
+		Character->GetPickupItem(this);
+	}
+
+	SetActorScale3D(FVector(1.f));
+}
+
+void AItem::ItemInterp(float DeltaTime)
+{
+	if (!bInterping)
+		return;
+
+	if (Character && ItemZCurve ) //ItemZCurve는 블루프린트에서 세팅함
+	{
+		// ElapseTime : ItemInterpTimer 시작하고 경과시간
+		const float ElapseTime = GetWorldTimerManager().GetTimerElapsed(ItemInterpTimer);
+		// 경과시간에 따른 UCurveFloat에서 받아온 값
+		const float CurveValue = ItemZCurve->GetFloatValue(ElapseTime);
+		// 커브가 시작될때 아이템의 첫 위치를 구함
+		FVector ItemLocation = ItemInterpStartLocation;
+		// 카메라 앞에 멈출 로케이션
+		const FVector CameraInterpLocation = Character->GetCameraInterpLocation();
+		// 아이템에서 카메라 앞에 멈출 로케이션 까지의 벡터 (x,y는 0)
+		const FVector ItemToCamera = FVector(0.f, 0.f, (CameraInterpLocation - ItemLocation).Z);
+		// CurveValue와 곱해질 값.
+		const float DeltaZ = ItemToCamera.Size();
+
+		const FVector CurrentLocation = GetActorLocation();
+		const float InterpXValue = FMath::FInterpTo(CurrentLocation.X, CameraInterpLocation.X, DeltaTime, 30.f);
+		const float InterpYValue = FMath::FInterpTo(CurrentLocation.Y, CameraInterpLocation.Y, DeltaTime, 30.f);
+
+		ItemLocation.X = InterpXValue;
+		ItemLocation.Y = InterpYValue;
+
+		ItemLocation.Z += CurveValue * DeltaZ;
+		SetActorLocation(ItemLocation, true, nullptr, ETeleportType::TeleportPhysics);
+
+		const FRotator CameraRotation = Character->GetFollowCamera()->GetComponentRotation();
+		FRotator ItemRotation = FRotator(0.f, CameraRotation.Yaw + InterpInitialYawOffset, 0.f);
+		SetActorRotation(ItemRotation, ETeleportType::TeleportPhysics);
+
+		if (ItemScaleCurve)
+		{
+			const float ScaleCurveValue = ItemScaleCurve->GetFloatValue(ElapseTime);
+			SetActorScale3D(FVector(ScaleCurveValue, ScaleCurveValue, ScaleCurveValue));
+		}
+		
+	}
+
+
+}
+
 
 // Called every frame
 void AItem::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	ItemInterp(DeltaTime);
 
 }
 
@@ -198,5 +281,20 @@ void AItem::SetItemState(EItemState State)
 {
 	ItemState = State;
 	SetItemProperties(State);
+}
+
+void AItem::StartItemCurve(AShooterCharacter* Char)
+{
+	Character = Char;
+	ItemInterpStartLocation = GetActorLocation();
+	bInterping = true;
+	SetItemState(EItemState::EIS_EquipInterping);
+
+	GetWorldTimerManager().SetTimer(ItemInterpTimer, this, &AItem::FinishInterping, ZCurveTime);
+
+	const float CameraRotationYaw = Character->GetFollowCamera()->GetComponentRotation().Yaw;
+	const float ItemRotationYaw = GetActorRotation().Yaw;
+
+	InterpInitialYawOffset = ItemRotationYaw - CameraRotationYaw;
 }
 

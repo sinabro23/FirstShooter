@@ -197,6 +197,13 @@ private:// 할당들은 웬만하면 다 블루프린트에서 했음
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	AItem* TraceHitItem;
 
+	// 무기획득시 카메라앞에 설 위치 정할 변수
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Items", meta = (AllowPrivateAccess = "true"))
+	float CameraInterpDistance; // 무기멈출 위치구할때 카메라의 Forward벡터에 곱해질값.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Items", meta = (AllowPrivateAccess = "true"))
+	float CameraInterpElevation; // 무기멈출 위치구할때 카메라의 업벡터에 곱해질값.
+
+
 public:
 	FORCEINLINE USpringArmComponent* GetSpringArm() const { return CameraBoom; }
 	FORCEINLINE UCameraComponent* GetFollowCamera() const { return FollowCamera; }
@@ -209,4 +216,9 @@ public:
 
 	// 오버랩된 아이템 개수 설정 및 bShouldTraceForItem 설정 (오버랩된 아이템이 하나라도 있으면 Trace해야함)
 	void IncrementOverlappedItemCount(int8 Amount);
+
+	// 무기 획득시 카메라 앞에 설 위치
+	FVector GetCameraInterpLocation();
+
+	void GetPickupItem(AItem* Item);
 };

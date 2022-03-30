@@ -52,6 +52,11 @@ protected:
 	void SetActiveStars(); // 희귀도에 따라서 별 끄고 켜기
 
 	void SetItemProperties(EItemState State); // 스테이트에따른 아이템의 컴포넌트 값들 설정, SetItemState에서 같이실행됨
+
+	// InterpTimer로 시간되면 호출할 함수
+	void FinishInterping();
+
+	void ItemInterp(float DeltaTime); // Tick에서 호출될 함수 binterping이 true일때만 실행
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -84,6 +89,32 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
 	EItemState ItemState; // 아이템의 현재 상태
 
+	// Item Interp 관련
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
+	class UCurveFloat* ItemZCurve; // 아이템 가까이올때 z값을 구할 커브
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
+	FVector ItemInterpStartLocation; // 아이템 획득시 인털프 시작될 로케이션
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
+	FVector CameraTargetLocation;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
+	bool bInterping;
+
+	FTimerHandle ItemInterpTimer;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
+	float ZCurveTime;
+
+	// 인터핑 되는 동안의 x와 y의 값
+	float ItemInterpX;
+	float ItemInterpY;
+
+	float InterpInitialYawOffset;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
+	UCurveFloat* ItemScaleCurve;
+	//////////////////////////////////////////////////////////////////
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
+	class AShooterCharacter* Character;
 public:
 	FORCEINLINE UWidgetComponent* GetPickupWidget() const { return PickupWidget; }
 	FORCEINLINE USphereComponent* GetAreaSphere() const { return AreaSphere; }
@@ -93,4 +124,6 @@ public:
 
 	void SetItemState(EItemState State); // SetItemProperties도 같이함
 
+	// ShooterCharacter클래스에서 호출할 함수
+	void StartItemCurve(AShooterCharacter* Char);
 };
