@@ -6,6 +6,20 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/KismetMathLibrary.h"
 
+UShooterAnimInstance::UShooterAnimInstance():
+	Speed(0.f),
+	bIsInAir(false),
+	bIsAccelerating(false),
+	MovementOffsetYaw(0.f),
+	LastMovementOffsetYaw(0.f),
+	bAiming(false),
+	CharacterYaw(0.f),
+	CharacterYawLastFrame(0.f),
+	RootYawOffset(0.f)
+{
+
+}
+
 void UShooterAnimInstance::UpdateAnimationProperties(float DeltaTime)
 {
 	if (nullptr == ShooterCharacter)
@@ -38,19 +52,59 @@ void UShooterAnimInstance::UpdateAnimationProperties(float DeltaTime)
 		{
 			LastMovementOffsetYaw = MovementOffsetYaw; // 멈추기 전까지의 오프셋을 저장해놓음
 		}
-		//FString RotationMessage = FString::Printf(TEXT("Base Aim Rotation : %f"), AimRotation.Yaw);
-		//FString MovementMessage = FString::Printf(TEXT("Movement Rotation : %f"), MovementRotation.Yaw);
-		//FString OffsetMessage = FString::Printf(TEXT("MovementOffsetYaw : %f"), MovementOffsetYaw);
-		//if (GEngine)
-		//{
-		//	GEngine->AddOnScreenDebugMessage(1, 0.2f, FColor::White, OffsetMessage);
-		//}
 
 		bAiming = ShooterCharacter->GetAiming();
 	}
+
+	TurnInPlace();
 }
 
 void UShooterAnimInstance::NativeInitializeAnimation()
 {
 	ShooterCharacter = Cast<AShooterCharacter>(TryGetPawnOwner());
+}
+
+void UShooterAnimInstance::TurnInPlace()
+{
+	if (!ShooterCharacter)
+		return;
+
+	if (Speed > 0)
+	{
+		// 움직임이 있을때는 제자리회전을 안함
+		RootYawOffset = 0.f;
+		CharacterYaw = ShooterCharacter->GetActorRotation().Yaw;
+		CharacterYawLastFrame = CharacterYaw;
+		RotationCurveLastFrame = 0.f;
+		RotationCurve = 0.f;
+	}
+	else
+	{
+		CharacterYawLastFrame = CharacterYaw;
+		CharacterYaw = ShooterCharacter->GetActorRotation().Yaw;
+		const float YawDelta = CharacterYaw - CharacterYawLastFrame;
+
+		// RootYawOffsetFMF -180~180으로 한정
+		RootYawOffset = UKismetMathLibrary::NormalizeAxis(RootYawOffset - YawDelta); 
+
+		// 1.0 이면 Turning, 0.0 이면 아니다 (Idle_Turn_90_Right_Trimmed애니메이션에서 커브에 Turning이란 이름으로 추가한 메타데이터 쭉 값이 1로돼있음)
+		const float Turning = GetCurveValue(TEXT("Turning"));
+		if (Turning > 0)
+		{
+			RotationCurveLastFrame = RotationCurve;
+			RotationCurve = GetCurveValue(TEXT("Rotation"));
+			const float DeltaRotation = RotationCurve - RotationCurveLastFrame;
+
+			// RootYawOffset > 0 이면 왼쪽으로 회전, RootYawOffset < 0 이면 오른쪽으로 회전
+			RootYawOffset > 0 ? RootYawOffset -= DeltaRotation : RootYawOffset += DeltaRotation;
+
+			const float ABSRootYawOffset{ FMath::Abs(RootYawOffset) };
+			if (ABSRootYawOffset > 90.f)
+			{
+				const float YawExcess{ ABSRootYawOffset - 90.f };
+				RootYawOffset > 0 ? RootYawOffset -= YawExcess : RootYawOffset += YawExcess;
+			}
+		}
+
+	}
 }
