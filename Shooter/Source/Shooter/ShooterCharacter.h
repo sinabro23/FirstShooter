@@ -4,16 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "AmmoType.h"
 #include "ShooterCharacter.generated.h"
 
-UENUM(BlueprintType)
-enum class EAmmoType : uint8  // 총알 분류에 따른 총알량을 맵으로 들고 있기위한 이넘
-{
-	EAT_9mm UMETA(DisplayName = "9mm"),
-	EAT_AR UMETA(DisplayName = "Assault Rifle"),
-
-	EAT_MAX UMETA(DisplayName = "Default MAX")
-};
 
 UENUM(BlueprintType)
 enum class ECombatState : uint8
@@ -71,7 +64,6 @@ protected:
 	void FinishCrosshairBulletFire();
 	/////////////////////////
 
-
 	/// 자동사격 관련 함수
 	void FireButtonPressed();
 	void FireButtonReleased();
@@ -118,6 +110,14 @@ protected:
 	void ReloadWeapon(); // 실제 리로드 하는 기능
 	UFUNCTION(BlueprintCallable)
 	void FinishReloading(); // 리로드 몽타주의 애님노티파이로 호출될 함수, AmmoMap 업데이트 할것
+	bool CarryingAmmo(); // 현재 장착하고 있는 무기타입에 맞는 총알을 들고 있는지
+	
+	// 리로드 몽타주 애님노피타이에서 호출할 함수
+	UFUNCTION(BlueprintCallable)
+	void GrabClip();
+	UFUNCTION(BlueprintCallable)
+	void ReleaseClip();
+
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -254,6 +254,12 @@ private:// 할당들은 웬만하면 다 블루프린트에서 했음
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	UAnimMontage* ReloadMontage;
 
+	// 재장전 탄창 버리고 끼는것
+	// 재장전할때 처음 탄창을 잡을때의 탄창 트랜스폼
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAccess = "true"))
+	FTransform ClipTransform;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAccess = "true"))
+	USceneComponent* HandSceneComponent; //리로드 할때 캐릭터 손에 붙일 SceneComponent
 
 public:
 	FORCEINLINE USpringArmComponent* GetSpringArm() const { return CameraBoom; }

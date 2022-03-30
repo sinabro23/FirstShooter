@@ -113,6 +113,12 @@ private:
 	UCurveFloat* ItemScaleCurve;
 	//////////////////////////////////////////////////////////////////
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite , Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
+	class USoundCue* PickupSound; // 아이템 주울때 나는 소리
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
+	USoundCue* EquipSound; // 장착될때 나는 소리
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
 	class AShooterCharacter* Character;
 public:
@@ -121,6 +127,8 @@ public:
 	FORCEINLINE UBoxComponent* GetCollsionBox() const { return CollsionBox; }
 	FORCEINLINE EItemState GetItemState() const { return ItemState; }
 	FORCEINLINE USkeletalMeshComponent* GetItemMesh() const { return ItemMesh; }
+	FORCEINLINE USoundCue* GetPickupSound() const { return PickupSound; }
+	FORCEINLINE USoundCue* GetEquipSound() const { return EquipSound; }
 
 	void SetItemState(EItemState State); // SetItemProperties도 같이함
 

@@ -4,7 +4,17 @@
 
 #include "CoreMinimal.h"
 #include "Item.h"
+#include "AmmoType.h"
 #include "Weapon.generated.h"
+
+UENUM(BlueprintType)
+enum class EWeaponType : uint8
+{
+	EWT_SubMachineGun UMETA(DisplayName = "SubmachineGun"),
+	EWT_AssaultRifle UMETA(DisplayName = "AssaultRifle"),
+
+	EWT_MAX UMETA(DisplayName = "DefaultMAX")
+};
 
 /**
  * 
@@ -30,14 +40,45 @@ private:
 	////////////////////
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
-	int32 Ammo; // 이 무기의 총알수
+	int32 Ammo; // 이 무기의 현재 총알수
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
+	int32 MagazineCapacity; // 탄창 최대 장탄수
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
+	EWeaponType WeaponType; // 무기타입
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
+	EAmmoType AmmoType; // 총알타입 #include "AmmoType.h"
+
+	// 몽타주 리로드 섹션을 위한 FName
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
+	FName ReloadMontageSection;
+
+	// 장전할때 탄창이 움직일때 true
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
+	bool bMovingClip;
+
+	// 탄창 Bone 이름
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
+	FName ClipBoneName;
+
 public:
 	// 무기에 Impulse를 준다
 	void ThrowWeapon();
 
 	FORCEINLINE int32 GetAmmo() const { return Ammo; }
-
+	FORCEINLINE int32 GetMagazineCapacity() const { return MagazineCapacity; }
+	
 	// 캐릭터가 총을 쏠때 실행될 함수(총알 감소)
 	void DecrementAmmo();
+	
+	FORCEINLINE EWeaponType GetWeaponType() const { return WeaponType; }
+	FORCEINLINE EAmmoType GetAmmoType() const { return AmmoType; }
+	FORCEINLINE FName GetReloadMontageSection() const { return ReloadMontageSection; }
+	FORCEINLINE FName GetClipBoneName() const { return ClipBoneName; }
+
+	void ReloadAmmo(int32 Amount);
+
+	FORCEINLINE void SetMovingClip(bool Move) { bMovingClip = Move; }
 	
 };

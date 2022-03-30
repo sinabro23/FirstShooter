@@ -81,6 +81,8 @@ AShooterCharacter::AShooterCharacter():
 	GetCharacterMovement()->RotationRate = FRotator(0.0f, 540.f, 0.0f); // 이 로테이션레이트로 회전함
 	GetCharacterMovement()->JumpZVelocity = 600.f;
 	GetCharacterMovement()->AirControl = 0.2f;
+	
+	HandSceneComponent = CreateDefaultSubobject<USceneComponent>(TEXT("HandSceneComp"));
 }
 
 // Called when the game starts or when spawned
@@ -485,6 +487,11 @@ void AShooterCharacter::SelectButtonPressed()
 	if (TraceHitItem)
 	{
 		TraceHitItem->StartItemCurve(this);
+		
+		if (TraceHitItem->GetPickupSound())
+		{
+			UGameplayStatics::PlaySound2D(this, TraceHitItem->GetPickupSound());
+		}
 	}
 }
 
@@ -573,30 +580,96 @@ void AShooterCharacter::ReloadButtonPressed()
 
 void AShooterCharacter::ReloadWeapon()
 {
+	// ECS_Unoccupied상태일때만 격발 또는 리로드 가능
 	if (CombatState != ECombatState::ECS_Unoccupied)
 		return;
 
+	if (!EquippedWeapon)
+		return;
+
 	// 무기타입에 맞는 총알을 들고 있는지 체크
-	// TODO : bool CarryingAmmo() 함수 만들기
-	if (true) // 나중에 CarryingAmmo()로 대체할 예정
+	if (CarryingAmmo()) 
 	{
-		// TODO : 무기 타입을 위한 enum만들기
-		// TODO : switch on EquippedWeapon->WeaponType
-		FName MontageSection(TEXT("ReloadSMG"));
+		CombatState = ECombatState::ECS_Reloading;
 
 		UAnimInstance* Animinstance = GetMesh()->GetAnimInstance();
 		if (Animinstance && ReloadMontage)
 		{
 			Animinstance->Montage_Play(ReloadMontage);
-			Animinstance->Montage_JumpToSection(MontageSection);
+			Animinstance->Montage_JumpToSection(EquippedWeapon->GetReloadMontageSection());
 		}
 	}
 }
 
 void AShooterCharacter::FinishReloading()
 {
-	// TODO : Update AmmoMap
 	CombatState = ECombatState::ECS_Unoccupied;
+
+	if (!EquippedWeapon)
+		return;
+
+	const auto AmmoType = EquippedWeapon->GetAmmoType();
+	if (AmmoMap.Contains(AmmoType))
+	{
+		// EquippedWeapon의 AmmoType에 따른 현재 캐릭터가 들고있는 Ammo량
+		int32 CarriedAmmo = AmmoMap[AmmoType];
+		
+		// 탄창에 총알 몇개나 들어갈 수 있는지
+		const int32 MagEmptySpace = EquippedWeapon->GetMagazineCapacity() - EquippedWeapon->GetAmmo();
+		if (MagEmptySpace > CarriedAmmo)
+		{
+			// 우리가 들고있는 남은 총알을 다 탄창에 넣음(탄창의 빈공간보다 들고있는 총알이 적으니깐)
+			EquippedWeapon->ReloadAmmo(CarriedAmmo);
+			CarriedAmmo = 0;
+			AmmoMap.Add(AmmoType, CarriedAmmo); //AmmoMap.Add는 키가 존재한다면 새로 넣어준 값으로 대체됨
+		}
+		else
+		{
+			// 총알 채우기
+			EquippedWeapon->ReloadAmmo(MagEmptySpace);
+			CarriedAmmo -= MagEmptySpace;
+			AmmoMap.Add(AmmoType, CarriedAmmo);
+		}
+	}
+}
+
+bool AShooterCharacter::CarryingAmmo()
+{
+	if (!EquippedWeapon)
+		return false;
+
+	auto AmmoType = EquippedWeapon->GetAmmoType();
+
+	if (AmmoMap.Contains(AmmoType))
+	{
+		return AmmoMap[AmmoType] > 0;
+	}
+
+	return false;
+}
+
+void AShooterCharacter::GrabClip()
+{
+	if (!EquippedWeapon)
+		return;
+
+	if (!HandSceneComponent)
+		return;
+
+	// 장착한 무기의 탄창의 BoneName의 인덱스 가져오기
+	int32 ClipBoneIndex = EquippedWeapon->GetItemMesh()->GetBoneIndex(EquippedWeapon->GetClipBoneName());
+	ClipTransform = EquippedWeapon->GetItemMesh()->GetBoneTransform(ClipBoneIndex);
+
+	FAttachmentTransformRules AttachmentRules(EAttachmentRule::KeepRelative, true);
+	HandSceneComponent->AttachToComponent(GetMesh(), AttachmentRules, FName(TEXT("Hand_L")));
+	HandSceneComponent->SetWorldTransform(ClipTransform);
+
+	EquippedWeapon->SetMovingClip(true);
+}
+
+void AShooterCharacter::ReleaseClip()
+{
+	EquippedWeapon->SetMovingClip(false);
 }
 
 // Called to bind functionality to input
@@ -659,6 +732,11 @@ FVector AShooterCharacter::GetCameraInterpLocation()
 
 void AShooterCharacter::GetPickupItem(AItem* Item)
 {
+	if (Item->GetEquipSound())
+	{
+		UGameplayStatics::PlaySound2D(this, Item->GetEquipSound());
+	}
+
 	auto Weapon = Cast<AWeapon>(Item);
 	if (Weapon)
 	{

@@ -7,6 +7,7 @@
 #include "Components/SphereComponent.h"
 #include "ShooterCharacter.h"
 #include "Camera/CameraComponent.h"
+#include "Sound/SoundCue.h"
 
 // Sets default values
 AItem::AItem() : 
