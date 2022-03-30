@@ -6,6 +6,25 @@
 #include "GameFramework/Character.h"
 #include "ShooterCharacter.generated.h"
 
+UENUM(BlueprintType)
+enum class EAmmoType : uint8  // 총알 분류에 따른 총알량을 맵으로 들고 있기위한 이넘
+{
+	EAT_9mm UMETA(DisplayName = "9mm"),
+	EAT_AR UMETA(DisplayName = "Assault Rifle"),
+
+	EAT_MAX UMETA(DisplayName = "Default MAX")
+};
+
+UENUM(BlueprintType)
+enum class ECombatState : uint8
+{
+	ECS_Unoccupied UMETA(DisplayName = "Unoccupied"),
+	ECS_FireTimerInProgress UMETA(DisplayName = "FireTimerInProgress"),
+	ECS_Reloading UMETA(DisplayName = "Reloading"),
+
+	ECS_MAX UMETA(DisplayName = "Default MAX")
+};
+
 UCLASS()
 class SHOOTER_API AShooterCharacter : public ACharacter
 {
@@ -30,7 +49,7 @@ protected:
 	void Turn(float Value);
 	void LookUp(float Value);
 
-	void FIreWeapon();
+	void FireWeapon();
 
 	// 총쏘면 최종 맞는 로케이션 구하는 함수
 	bool GetBeamEndLocation(const FVector& MuzzleSocketLocation, FVector& OutBeamLocation);
@@ -83,6 +102,22 @@ protected:
 	// 현재 들고있는 무기 버리고 새로운 무기 주음
 	void SwapWeapon(AWeapon* WeaponToSwap);
 
+	//TMap<EAmmoType, int32> AmmoMap 초기화 BeginPlay에서 실행
+	void InitializeAmmoMap();
+
+	// 무기가 총알이 있는지 없는지
+	bool WeaponHasAmmo();
+	
+	// 격발 관련 함수
+	void PlayFireSound();
+	void SendBullet();
+	void PlayGunfireMontage();
+
+	//Reload관련
+	void ReloadButtonPressed(); // R키와 바인드할 함수
+	void ReloadWeapon(); // 실제 리로드 하는 기능
+	UFUNCTION(BlueprintCallable)
+	void FinishReloading(); // 리로드 몽타주의 애님노티파이로 호출될 함수, AmmoMap 업데이트 할것
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -202,6 +237,22 @@ private:// 할당들은 웬만하면 다 블루프린트에서 했음
 	float CameraInterpDistance; // 무기멈출 위치구할때 카메라의 Forward벡터에 곱해질값.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Items", meta = (AllowPrivateAccess = "true"))
 	float CameraInterpElevation; // 무기멈출 위치구할때 카메라의 업벡터에 곱해질값.
+
+	// 총알 관련
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Items", meta = (AllowPrivateAccess = "true"))
+	TMap<EAmmoType, int32> AmmoMap;//AmmoType에따른 총알 잔여량 Map
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Items", meta = (AllowPrivateAccess = "true"))
+	int32 Starting9mmAmmo; // 시작할때 9mm 총알량
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Items", meta = (AllowPrivateAccess = "true"))
+	int32 StartingARAmmo;
+
+	// combat state. UnOccupied 상태여야만 격발 이나 재장전 할 수 있음
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAccess = "true"))
+	ECombatState CombatState;
+
+	// 재장전 애님몽타주
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAccess = "true"))
+	UAnimMontage* ReloadMontage;
 
 
 public:

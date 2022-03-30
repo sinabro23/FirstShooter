@@ -52,7 +52,12 @@ AShooterCharacter::AShooterCharacter():
 	bShouldTraceForItems(false),
 	// 아이템 획득시 카메라 앞에 멈출 위치
 	CameraInterpDistance(250.f),
-	CameraInterpElevation(65.f)
+	CameraInterpElevation(65.f),
+	//총알관련
+	Starting9mmAmmo(85),
+	StartingARAmmo(120),
+	//컴뱃스테이트
+	CombatState(ECombatState::ECS_Unoccupied)
 {
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
@@ -91,6 +96,8 @@ void AShooterCharacter::BeginPlay()
 
 	EquipWeapon(SpawnDefaultWeapon()); // 기본무기 생성하고 장착하기
 	
+	InitializeAmmoMap(); //  Starting9mmAmmo,StartingARAmmo에 따른 AmmoMap 초기화
+
 }
 
 // Called every frame
@@ -171,50 +178,25 @@ void AShooterCharacter::LookUp(float Value)
 	AddControllerPitchInput(Value * LookUpScaleFactor);
 }
 
-void AShooterCharacter::FIreWeapon()
+void AShooterCharacter::FireWeapon()
 {
-	if (FireSound)
+	if (!EquippedWeapon)
+		return;
+
+	if (CombatState != ECombatState::ECS_Unoccupied) 
+		return;
+
+	if (WeaponHasAmmo())
 	{
-		UGameplayStatics::PlaySound2D(this, FireSound);
+		PlayFireSound();
+		SendBullet();
+		PlayGunfireMontage();
+		// 크로스헤어 벌어지는거를 위한 타이머 세팅
+		StartCrosshairBulletFire();
+		EquippedWeapon->DecrementAmmo(); // 무기에서 총알 하나 감소
+
+		StartFireTimer();
 	}
-
-	// USkeletalMeshSocket가 있었네 참고 !!
-	const USkeletalMeshSocket* BarrelSocket = GetMesh()->GetSocketByName("BarrelSocket");
-	if (BarrelSocket)
-	{
-		const FTransform SocketTransform = BarrelSocket->GetSocketTransform(GetMesh());
-		
-		if (MuzzleFlash) // 블루프린트에서 할당했음
-		{
-			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), MuzzleFlash, SocketTransform);
-		}
-
-		FVector BeamEnd; // 총알 최종위치 넣어줄 곳
-		bool bBeamEnd = GetBeamEndLocation(SocketTransform.GetLocation(), BeamEnd); 
-		if (bBeamEnd)
-		{
-			if (ImpactParticles)
-			{
-				UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ImpactParticles, BeamEnd);
-			}
-
-			UParticleSystemComponent* Beam = UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), BeamParticles, SocketTransform);
-			if (Beam)
-			{
-				Beam->SetVectorParameter(FName("Target"), BeamEnd);
-			}
-		}
-	}
-
-	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-	if (AnimInstance && HipFireMontage) // 몽타주에서 블렌드인 타임을 0으로해줘서 블렌드없이 바로 실행되게 했음
-	{
-		AnimInstance->Montage_Play(HipFireMontage);
-		AnimInstance->Montage_JumpToSection(FName("StartFire"));
-	}
-
-	// 크로스헤어 벌어지는거를 위한 타이머 세팅
-	StartCrosshairBulletFire();
 }
 
 bool AShooterCharacter::GetBeamEndLocation(const FVector& MuzzleSocketLocation, FVector& OutBeamLocation)
@@ -356,7 +338,7 @@ void AShooterCharacter::FinishCrosshairBulletFire()
 void AShooterCharacter::FireButtonPressed()
 {
 	bFireButtonPressed = true;
-	StartFireTimer();
+	FireWeapon();
 }
 
 void AShooterCharacter::FireButtonReleased()
@@ -366,20 +348,25 @@ void AShooterCharacter::FireButtonReleased()
 
 void AShooterCharacter::StartFireTimer()
 {
-	if (bShouldFire)
-	{
-		FIreWeapon();
-		bShouldFire = false;
-		GetWorldTimerManager().SetTimer(AutoFireTimer, this, &AShooterCharacter::AutoFireReset, AutomaticFireRate);
-	}
+	CombatState = ECombatState::ECS_FireTimerInProgress;
+	GetWorldTimerManager().SetTimer(AutoFireTimer, this, &AShooterCharacter::AutoFireReset, AutomaticFireRate);
 }
 
 void AShooterCharacter::AutoFireReset()
 {
-	bShouldFire = true;
-	if (bFireButtonPressed)
+	CombatState = ECombatState::ECS_Unoccupied;
+
+	if (WeaponHasAmmo())
 	{
-		StartFireTimer();
+		if (bFireButtonPressed)
+		{
+			FireWeapon();
+		}
+	}
+	else
+	{
+		// 총알없으니 자동으로 Reload하게
+		ReloadWeapon();
 	}
 }
 
@@ -513,7 +500,104 @@ void AShooterCharacter::SwapWeapon(AWeapon* WeaponToSwap)
 	TraceHitItemLastFrame = nullptr;
 }
 
+void AShooterCharacter::InitializeAmmoMap()
+{
+	AmmoMap.Add(EAmmoType::EAT_9mm, Starting9mmAmmo);
+	AmmoMap.Add(EAmmoType::EAT_AR, StartingARAmmo);
+}
 
+bool AShooterCharacter::WeaponHasAmmo()
+{
+	if (!EquippedWeapon)
+		return false;
+
+	return EquippedWeapon->GetAmmo() > 0;
+}
+
+void AShooterCharacter::PlayFireSound()
+{
+	// Play Sound
+	if (FireSound)
+	{
+		UGameplayStatics::PlaySound2D(this, FireSound);
+	}
+}
+
+void AShooterCharacter::SendBullet()
+{
+	// Send Bullet
+	const USkeletalMeshSocket* BarrelSocket = EquippedWeapon->GetItemMesh()->GetSocketByName("BarrelSocket");
+	if (BarrelSocket)
+	{
+		const FTransform SocketTransform = BarrelSocket->GetSocketTransform(EquippedWeapon->GetItemMesh());
+
+		if (MuzzleFlash) // 블루프린트에서 할당했음
+		{
+			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), MuzzleFlash, SocketTransform);
+		}
+
+		FVector BeamEnd; // 총알 최종위치 넣어줄 곳
+		bool bBeamEnd = GetBeamEndLocation(SocketTransform.GetLocation(), BeamEnd);
+		if (bBeamEnd)
+		{
+			if (ImpactParticles)
+			{
+				UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ImpactParticles, BeamEnd);
+			}
+
+			UParticleSystemComponent* Beam = UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), BeamParticles, SocketTransform);
+			if (Beam)
+			{
+				Beam->SetVectorParameter(FName("Target"), BeamEnd);
+			}
+		}
+	}
+
+}
+
+void AShooterCharacter::PlayGunfireMontage()
+{
+	// Play Hit Fire Montage
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && HipFireMontage) // 몽타주에서 블렌드인 타임을 0으로해줘서 블렌드없이 바로 실행되게 했음
+	{
+		AnimInstance->Montage_Play(HipFireMontage);
+		AnimInstance->Montage_JumpToSection(FName("StartFire"));
+	}
+}
+
+void AShooterCharacter::ReloadButtonPressed()
+{
+	ReloadWeapon();
+}
+
+void AShooterCharacter::ReloadWeapon()
+{
+	if (CombatState != ECombatState::ECS_Unoccupied)
+		return;
+
+	// 무기타입에 맞는 총알을 들고 있는지 체크
+	// TODO : bool CarryingAmmo() 함수 만들기
+	if (true) // 나중에 CarryingAmmo()로 대체할 예정
+	{
+		// TODO : 무기 타입을 위한 enum만들기
+		// TODO : switch on EquippedWeapon->WeaponType
+		FName MontageSection(TEXT("ReloadSMG"));
+
+		UAnimInstance* Animinstance = GetMesh()->GetAnimInstance();
+		if (Animinstance && ReloadMontage)
+		{
+			Animinstance->Montage_Play(ReloadMontage);
+			Animinstance->Montage_JumpToSection(MontageSection);
+		}
+	}
+}
+
+void AShooterCharacter::FinishReloading()
+{
+	// TODO : Update AmmoMap
+	CombatState = ECombatState::ECS_Unoccupied;
+}
 
 // Called to bind functionality to input
 void AShooterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -532,6 +616,10 @@ void AShooterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 
 	PlayerInputComponent->BindAction("Select", EInputEvent::IE_Pressed, this, &AShooterCharacter::SelectButtonPressed);
 	PlayerInputComponent->BindAction("Select", EInputEvent::IE_Released, this, &AShooterCharacter::SelectButtonReleased);
+
+	PlayerInputComponent->BindAction("ReloadButton", EInputEvent::IE_Pressed, this, &AShooterCharacter::ReloadButtonPressed);
+
+
 
 	PlayerInputComponent->BindAxis("MoveForward", this, &AShooterCharacter::MoveForward);
 	PlayerInputComponent->BindAxis("MoveRight", this, &AShooterCharacter::MoveRight);
