@@ -127,6 +127,8 @@ protected:
 
 	void Aim();
 	void StopAiming();
+
+	void PickupAmmo(class AAmmo* Ammo);
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -294,6 +296,23 @@ private:// 할당들은 웬만하면 다 블루프린트에서 했음
 	float CrouchingGroundFriction;
 
 	bool bAimingButtonPressed;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	USceneComponent* WeaponInterpComp; // 아이템 획득시 여러방향에서 날라오게
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	USceneComponent* InterpComp1; // 아이템 획득시 여러방향에서 날라오게
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	USceneComponent* InterpComp2; // 아이템 획득시 여러방향에서 날라오게
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	USceneComponent* InterpComp3; // 아이템 획득시 여러방향에서 날라오게
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	USceneComponent* InterpComp4; // 아이템 획득시 여러방향에서 날라오게
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	USceneComponent* InterpComp5; // 아이템 획득시 여러방향에서 날라오게
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	USceneComponent* InterpComp6; // 아이템 획득시 여러방향에서 날라오게
+
 
 public:
 	FORCEINLINE USpringArmComponent* GetSpringArm() const { return CameraBoom; }

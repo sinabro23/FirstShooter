@@ -51,7 +51,8 @@ protected:
 
 	void SetActiveStars(); // 희귀도에 따라서 별 끄고 켜기
 
-	void SetItemProperties(EItemState State); // 스테이트에따른 아이템의 컴포넌트 값들 설정, SetItemState에서 같이실행됨
+	// Ammo는 SkeletaMesh를 사용하지 않아서 override해서 사용해야함
+	virtual void SetItemProperties(EItemState State); // 스테이트에따른 아이템의 컴포넌트 값들 설정, SetItemState에서 같이실행됨
 
 	// InterpTimer로 시간되면 호출할 함수
 	void FinishInterping();
@@ -129,6 +130,7 @@ public:
 	FORCEINLINE USkeletalMeshComponent* GetItemMesh() const { return ItemMesh; }
 	FORCEINLINE USoundCue* GetPickupSound() const { return PickupSound; }
 	FORCEINLINE USoundCue* GetEquipSound() const { return EquipSound; }
+	FORCEINLINE int32 GetItemCount() const { return ItemCount; }
 
 	void SetItemState(EItemState State); // SetItemProperties도 같이함
 
