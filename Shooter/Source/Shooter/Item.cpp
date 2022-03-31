@@ -22,7 +22,9 @@ AItem::AItem() :
 	bInterping(false),
 	ItemInterpX(0.f),
 	ItemInterpY(0.f),
-	InterpInitialYawOffset(0.f)
+	InterpInitialYawOffset(0.f),
+	ItemType(EItemType::EIT_MAX),
+	InterpLocIndex(0)
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
@@ -218,6 +220,8 @@ void AItem::FinishInterping() // interp타이머 끝나면 호출될 함수
 	bInterping = false;
 	if (Character)
 	{
+		//Subtract 1 from the Item Count of the interp location struct
+		Character->IncrementInterpLocItemCount(InterpLocIndex, -1);
 		Character->GetPickupItem(this);
 	}
 
@@ -238,7 +242,7 @@ void AItem::ItemInterp(float DeltaTime)
 		// 커브가 시작될때 아이템의 첫 위치를 구함
 		FVector ItemLocation = ItemInterpStartLocation;
 		// 카메라 앞에 멈출 로케이션
-		const FVector CameraInterpLocation = Character->GetCameraInterpLocation();
+		const FVector CameraInterpLocation = GetInterpLocation();
 		// 아이템에서 카메라 앞에 멈출 로케이션 까지의 벡터 (x,y는 0)
 		const FVector ItemToCamera = FVector(0.f, 0.f, (CameraInterpLocation - ItemLocation).Z);
 		// CurveValue와 곱해질 값.
@@ -269,6 +273,56 @@ void AItem::ItemInterp(float DeltaTime)
 
 }
 
+FVector AItem::GetInterpLocation()
+{
+	if (Character == nullptr)
+		return FVector(0.f);
+
+	switch (ItemType)
+	{
+	case EItemType::EIT_AMMO:
+		return Character->GetInterpLocation(InterpLocIndex).SceneComponent->GetComponentLocation();
+		break;
+	case EItemType::EIT_Weapon:
+		return Character->GetInterpLocation(0).SceneComponent->GetComponentLocation();
+		break;
+	default:
+		break;
+	}
+
+	return FVector();
+}
+
+void AItem::PlayPickupSound()
+{
+	if(Character)
+	{
+		if (Character->ShouldPlayPickupSound())
+		{
+			Character->StartPickupSoundTimer();
+			if (PickupSound)
+			{
+				UGameplayStatics::PlaySound2D(this, PickupSound);
+			}
+		}
+	}
+}
+
+void AItem::PlayEquipSound()
+{
+	if (Character)
+	{
+		if (Character->ShouldPlayEquipSound())
+		{
+			Character->StartEquipSoundTimer();
+			if (EquipSound)
+			{
+				UGameplayStatics::PlaySound2D(this, EquipSound);
+			}
+		}
+	}
+}
+
 
 // Called every frame
 void AItem::Tick(float DeltaTime)
@@ -289,10 +343,12 @@ void AItem::StartItemCurve(AShooterCharacter* Char)
 {
 	Character = Char;
 
-	if (PickupSound)
-	{
-		UGameplayStatics::PlaySound2D(this, PickupSound);
-	}
+	// Get Array index in InterpLocations with the lowest item count
+	InterpLocIndex = Character->GetInterpLocationIndex();
+	// Add 1 to the Item Count for this interp location struct
+	Character->IncrementInterpLocItemCount(InterpLocIndex, 1);
+
+	PlayPickupSound();
 
 	ItemInterpStartLocation = GetActorLocation();
 	bInterping = true;

@@ -31,6 +31,15 @@ enum class EItemState : uint8
 	EIS_Max UMETA(DisplayName = "DefaultMax")
 };
 
+UENUM(BlueprintType)
+enum class EItemType : uint8
+{
+	EIT_AMMO UMETA(DisplayName = "Ammo"),
+	EIT_Weapon UMETA(DisplayName = "Weapon"),
+
+	EIT_MAX UMETA(DisplayName = "Default MAX")
+};
+
 UCLASS()
 class SHOOTER_API AItem : public AActor
 {
@@ -58,10 +67,17 @@ protected:
 	void FinishInterping();
 
 	void ItemInterp(float DeltaTime); // Tick에서 호출될 함수 binterping이 true일때만 실행
+
+	// Get interp location based on the item type
+	FVector GetInterpLocation();
+
+	void PlayPickupSound();
+
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
+	void PlayEquipSound(); // 슈터캐릭터에서 호출됨
 private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly , Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
 	class UBoxComponent* CollsionBox; // 라인트레이스했을때 충돌하면 아이템 HUD보여줄 콜리전
@@ -119,6 +135,13 @@ private:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
 	USoundCue* EquipSound; // 장착될때 나는 소리
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
+	EItemType ItemType;
+
+	// index of the interp location this item is interping to
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
+	int32 InterpLocIndex;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
 	class AShooterCharacter* Character;

@@ -18,6 +18,23 @@ enum class ECombatState : uint8
 	ECS_MAX UMETA(DisplayName = "Default MAX")
 };
 
+USTRUCT(BlueprintType)
+struct FInterpLocation
+{
+	GENERATED_BODY()
+
+		
+public:
+
+	// Interping할때 Location으로 활용할 것
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	USceneComponent* SceneComponent;
+
+	// 이 SceneComponent에서 몇개나 인터핑할지
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	int32 ItemCount;
+};
+
 UCLASS()
 class SHOOTER_API AShooterCharacter : public ACharacter
 {
@@ -129,6 +146,10 @@ protected:
 	void StopAiming();
 
 	void PickupAmmo(class AAmmo* Ammo);
+
+	void InitializeInterpLocations();
+
+
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -312,14 +333,29 @@ private:// 할당들은 웬만하면 다 블루프린트에서 했음
 	USceneComponent* InterpComp5; // 아이템 획득시 여러방향에서 날라오게
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	USceneComponent* InterpComp6; // 아이템 획득시 여러방향에서 날라오게
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	TArray<FInterpLocation> InterpLocations;
+	
+	FTimerHandle PickupSoundTimer;
+	FTimerHandle EquipSoundTimer;
 
+	bool bShouldPlayPickupSound;
+	bool bShouldPlayEquipSound;
 
+	void ResetPickupSoundTimer();
+	void ResetEquipSoundTimer();
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Items", meta = (AllowPrivateAccess = "true"))
+	float PickupSoundResetTime;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Items", meta = (AllowPrivateAccess = "true"))
+	float EquipSoundResetTime;
 public:
 	FORCEINLINE USpringArmComponent* GetSpringArm() const { return CameraBoom; }
 	FORCEINLINE UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 	FORCEINLINE bool GetAiming() const { return bAiming; }
 	FORCEINLINE ECombatState GetCombatState() const { return CombatState; }
 	FORCEINLINE bool GetCrouching() const { return bCrouching; }
+	FInterpLocation GetInterpLocation(int32 Index);
 
 	UFUNCTION(BlueprintCallable)
 	float GetCrosshairSpreadMultiplier();
@@ -330,7 +366,18 @@ public:
 	void IncrementOverlappedItemCount(int8 Amount);
 
 	// 무기 획득시 카메라 앞에 설 위치
-	FVector GetCameraInterpLocation();
+	//FVector GetCameraInterpLocation(); // 필요없어짐 Aitem 클래스에서 들고있음
 
 	void GetPickupItem(AItem* Item);
+
+	// Returns the index in InterpLocations array with the lowest ItemCount
+	int32 GetInterpLocationIndex();
+
+	void IncrementInterpLocItemCount(int32 Index, int32 Amount);
+
+	FORCEINLINE bool ShouldPlayPickupSound() const { return bShouldPlayPickupSound; }
+	FORCEINLINE bool ShouldPlayEquipSound() const { return bShouldPlayEquipSound; }
+
+	void StartPickupSoundTimer();
+	void StartEquipSoundTimer();
 };
