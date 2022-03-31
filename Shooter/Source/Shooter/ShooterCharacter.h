@@ -118,6 +118,15 @@ protected:
 	UFUNCTION(BlueprintCallable)
 	void ReleaseClip();
 
+	void CrouchButtonPressed();
+
+	virtual void Jump() override;
+
+	//쭈그리고 설때 캡슐크기 조절
+	void InterpCapsuleHalfHeight(float DeltaTime);
+
+	void Aim();
+	void StopAiming();
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -181,7 +190,9 @@ private:// 할당들은 웬만하면 다 블루프린트에서 했음
 	// 조준관련 //////////////////////////
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	bool bAiming; // 우클릭 조준
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	float CameraDefaultFOV; // 조준안했을때 FOV, BeginPlay에서 설정됨
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	float CameraZoomedFOV; // 조준했을때 FOV
 	float CameraCurrentFOV; // 줌할때 천천히 카메라 FOV바뀌게 현재값 저장 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAccess = "true"))
@@ -261,10 +272,35 @@ private:// 할당들은 웬만하면 다 블루프린트에서 했음
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	USceneComponent* HandSceneComponent; //리로드 할때 캐릭터 손에 붙일 SceneComponent
 
+	// 쭈그리기
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Movement", meta = (AllowPrivateAccess = "true"))
+	bool bCrouching;
+
+	// 움직임 속도
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Movement", meta = (AllowPrivateAccess = "true"))
+	float BaseMovementSpeed;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Movement", meta = (AllowPrivateAccess = "true"))
+	float CrouchMovementSpeed;
+
+	// 쭈그릴때 화면및 캡슐크기조절
+	float CurrentCapsuleHalfHeight;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement", meta = (AllowPrivateAccess = "true"))
+	float StandingCapsuleHalfHeight;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement", meta = (AllowPrivateAccess = "true"))
+	float CrouchingCapsuleHalfHeight;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement", meta = (AllowPrivateAccess = "true"))
+	float BaseGroundFriction; // 마찰력 낮은값이면 슬라이딩함
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement", meta = (AllowPrivateAccess = "true"))
+	float CrouchingGroundFriction;
+
+	bool bAimingButtonPressed;
+
 public:
 	FORCEINLINE USpringArmComponent* GetSpringArm() const { return CameraBoom; }
 	FORCEINLINE UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 	FORCEINLINE bool GetAiming() const { return bAiming; }
+	FORCEINLINE ECombatState GetCombatState() const { return CombatState; }
+	FORCEINLINE bool GetCrouching() const { return bCrouching; }
 
 	UFUNCTION(BlueprintCallable)
 	float GetCrosshairSpreadMultiplier();

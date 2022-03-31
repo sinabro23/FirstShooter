@@ -80,5 +80,7 @@ public:
 	void ReloadAmmo(int32 Amount);
 
 	FORCEINLINE void SetMovingClip(bool Move) { bMovingClip = Move; }
+
+	bool ClipIsFull(); // 탄창 꽉차있으면 true반환
 	
 };

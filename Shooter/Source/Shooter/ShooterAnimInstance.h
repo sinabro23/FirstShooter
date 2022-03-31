@@ -6,6 +6,17 @@
 #include "Animation/AnimInstance.h"
 #include "ShooterAnimInstance.generated.h"
 
+UENUM(BlueprintType)
+enum class EOffsetState : uint8  //어떤 에임오프셋을 사용할지 결정
+{
+	EOS_Aiming UMETA(DisplayName = "Aiming"),
+	EOS_Hip UMETA(DisplayName = "Hip"),
+	EOS_Reloading UMETA(DisplayName = "Reloading"),
+	EOS_InAir UMETA(DisplayName = "InAir"),
+
+	EOS_Max UMETA(DisplayName = "DefaultMAX"),
+};
+
 /**
  * 
  */
@@ -27,6 +38,9 @@ protected:
 
 	// 제자리에서 도는 것 관련 함수
 	void TurnInPlace();
+
+	// 달리는동안 회전하면 기울게만들기
+	void Lean(float DeltaTime);
 
 private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Movement", Meta = (AllowPrivateAccess = "true"))
@@ -53,10 +67,37 @@ private:
 
 
 	// 제자리에서 마우스 돌릴때 캐릭터 따라오게 하기위한 변수
-	float CharacterYaw; // 현재프레임의 캐릭터의 Yaw
-	float CharacterYawLastFrame; // 이전프레임의 캐릭터의 Yaw
+	float TIPCharacterYaw; // 현재프레임의 캐릭터의 Yaw, TIP(Turn In Place) , 공중에 있지않을때만 업데이트됨
+	float TIPCharacterYawLastFrame; // 이전프레임의 캐릭터의 Yaw TIP(Turn In Place), 공중에 있지않을때만 업데이트됨
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Turn in Place", Meta = (AllowPrivateAccess = "true"))
 	float RootYawOffset;
 	float RotationCurve; // 현재 프레임의 RotationCurve값 (Idle_Turn_90_Right_Trimmed 애니메이션에서 만들어준 커브의 값)
 	float RotationCurveLastFrame; // 이전 프레임의 RotationCurve값 (Idle_Turn_90_Right_Trimmed 애니메이션에서 만들어준 커브의 값)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Turn in Place", Meta = (AllowPrivateAccess = "true"))
+	float Pitch; // 총구 방향을 돌리는 AimOffset에서 Pitch값으로 쓸 변수
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Turn in Place", Meta = (AllowPrivateAccess = "true"))
+	bool bReloading; // 장전하는동안은 총구 방향이 돌지않게 하기위해
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Turn in Place", Meta = (AllowPrivateAccess = "true"))
+	EOffsetState OffsetState; //어떤 에임오프셋을 사용할지 결정
+
+	// Leaning에서 처음 추가했음
+	FRotator CharacterRotation; // 현재 프레임의CharacterYaw
+	FRotator CharacterRotationLastFrame;  // 지난 프레임의CharacterYaw
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Lean", Meta = (AllowPrivateAccess = "true"))
+	float YawDelta;	// 달리는 애니에미션 블렌드스페이스에서 사용할 값
+
+	//Crouching
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Crouch", Meta = (AllowPrivateAccess = "true"))
+	bool bCrouching;
+
+	// 총쏠때 반동 Change the recoil weight based on turning in place and aiming
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Crouch", Meta = (AllowPrivateAccess = "true"))
+	float RecoilWeight; // 블렌드할때 넣어줄 값
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Crouch", Meta = (AllowPrivateAccess = "true"))
+	bool bTurningInPlace; //제자리 돌기할때 true
+
+
+
 };

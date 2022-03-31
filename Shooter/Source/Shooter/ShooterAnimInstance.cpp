@@ -6,16 +6,25 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/KismetMathLibrary.h"
 
-UShooterAnimInstance::UShooterAnimInstance():
+UShooterAnimInstance::UShooterAnimInstance() :
 	Speed(0.f),
 	bIsInAir(false),
 	bIsAccelerating(false),
 	MovementOffsetYaw(0.f),
 	LastMovementOffsetYaw(0.f),
 	bAiming(false),
-	CharacterYaw(0.f),
-	CharacterYawLastFrame(0.f),
-	RootYawOffset(0.f)
+	TIPCharacterYaw(0.f),
+	TIPCharacterYawLastFrame(0.f),
+	CharacterRotation(FRotator::ZeroRotator),
+	CharacterRotationLastFrame(FRotator::ZeroRotator),
+	YawDelta(0.f),
+	RootYawOffset(0.f),
+	Pitch(0.f),
+	bReloading(false),
+	OffsetState(EOffsetState::EOS_Hip),
+	bCrouching(false),
+	RecoilWeight(1.f),
+	bTurningInPlace(false)
 {
 
 }
@@ -29,6 +38,9 @@ void UShooterAnimInstance::UpdateAnimationProperties(float DeltaTime)
 
 	if (ShooterCharacter)
 	{
+		bCrouching = ShooterCharacter->GetCrouching();
+		bReloading = (ShooterCharacter->GetCombatState() == ECombatState::ECS_Reloading);
+
 		//캐릭터 스피드 가져오기
 		FVector Velocity = ShooterCharacter->GetVelocity();
 		Velocity.Z = 0;// 공중 속력은 제거
@@ -54,9 +66,27 @@ void UShooterAnimInstance::UpdateAnimationProperties(float DeltaTime)
 		}
 
 		bAiming = ShooterCharacter->GetAiming();
+
+		if (bReloading)
+		{
+			OffsetState = EOffsetState::EOS_Reloading;
+		}
+		else if (bIsInAir)
+		{
+			OffsetState = EOffsetState::EOS_InAir;
+		}
+		else if(ShooterCharacter->GetAiming())
+		{
+			OffsetState = EOffsetState::EOS_Aiming;
+		}
+		else
+		{
+			OffsetState = EOffsetState::EOS_Hip;
+		}
 	}
 
 	TurnInPlace();
+	Lean(DeltaTime);
 }
 
 void UShooterAnimInstance::NativeInitializeAnimation()
@@ -69,28 +99,31 @@ void UShooterAnimInstance::TurnInPlace()
 	if (!ShooterCharacter)
 		return;
 
-	if (Speed > 0)
+	Pitch = ShooterCharacter->GetBaseAimRotation().Pitch;
+
+	if (Speed > 0 || bIsInAir) // 모든걸 리셋
 	{
 		// 움직임이 있을때는 제자리회전을 안함
 		RootYawOffset = 0.f;
-		CharacterYaw = ShooterCharacter->GetActorRotation().Yaw;
-		CharacterYawLastFrame = CharacterYaw;
+		TIPCharacterYaw = ShooterCharacter->GetActorRotation().Yaw;
+		TIPCharacterYawLastFrame = TIPCharacterYaw;
 		RotationCurveLastFrame = 0.f;
 		RotationCurve = 0.f;
 	}
 	else
 	{
-		CharacterYawLastFrame = CharacterYaw;
-		CharacterYaw = ShooterCharacter->GetActorRotation().Yaw;
-		const float YawDelta = CharacterYaw - CharacterYawLastFrame;
+		TIPCharacterYawLastFrame = TIPCharacterYaw;
+		TIPCharacterYaw = ShooterCharacter->GetActorRotation().Yaw;
+		const float TIPYawDelta = TIPCharacterYaw - TIPCharacterYawLastFrame;
 
 		// RootYawOffsetFMF -180~180으로 한정
-		RootYawOffset = UKismetMathLibrary::NormalizeAxis(RootYawOffset - YawDelta); 
+		RootYawOffset = UKismetMathLibrary::NormalizeAxis(RootYawOffset - TIPYawDelta);
 
 		// 1.0 이면 Turning, 0.0 이면 아니다 (Idle_Turn_90_Right_Trimmed애니메이션에서 커브에 Turning이란 이름으로 추가한 메타데이터 쭉 값이 1로돼있음)
 		const float Turning = GetCurveValue(TEXT("Turning"));
 		if (Turning > 0)
 		{
+			bTurningInPlace = true;
 			RotationCurveLastFrame = RotationCurve;
 			RotationCurve = GetCurveValue(TEXT("Rotation"));
 			const float DeltaRotation = RotationCurve - RotationCurveLastFrame;
@@ -105,6 +138,61 @@ void UShooterAnimInstance::TurnInPlace()
 				RootYawOffset > 0 ? RootYawOffset -= YawExcess : RootYawOffset += YawExcess;
 			}
 		}
-
+		else
+		{
+			bTurningInPlace = false;
+		}
 	}
+
+	// RecoilWeight(반동) 설정
+	if (bTurningInPlace) // 제자리돌기할때
+	{
+		if (bReloading)
+		{
+			RecoilWeight = 1.f;
+		}
+		else
+		{
+			RecoilWeight = 0.f;
+		}
+	}
+	else // 제자리돌기 안할때
+	{
+		if (bCrouching)
+		{
+			if (bReloading)
+			{
+				RecoilWeight = 1.f;
+			}
+			else
+			{
+				RecoilWeight = 0.1f;
+			}
+		}
+		else
+		{
+			if (bAiming || bReloading)
+			{
+				RecoilWeight = 1.f;
+			}
+			else
+			{
+				RecoilWeight = 0.5f;
+			}
+		}
+	}
+}
+
+void UShooterAnimInstance::Lean(float DeltaTime)
+{
+	if (!ShooterCharacter) return;
+
+	CharacterRotationLastFrame = CharacterRotation;
+	CharacterRotation = ShooterCharacter->GetActorRotation();
+
+	const FRotator Delta = UKismetMathLibrary::NormalizedDeltaRotator(CharacterRotation, CharacterRotationLastFrame);
+
+	const float Target = Delta.Yaw / DeltaTime; // / DeltaTime는 작은값이므로 Delta.Yaw값이 커짐
+	const float Interp = FMath::FInterpTo(YawDelta, Target, DeltaTime, 6.f);
+	YawDelta = FMath::Clamp(Interp, -90.f, 90.f);
 }
