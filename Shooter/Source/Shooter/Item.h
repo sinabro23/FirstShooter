@@ -72,6 +72,15 @@ protected:
 	FVector GetInterpLocation();
 
 	void PlayPickupSound();
+	
+	//Custom Depth관련(이해못함)
+	virtual void InitializeCustomDepth();
+
+	//이해x 에디터의 Construction script에서 사용
+	virtual void OnConstruction(const FTransform& Transform) override;
+	void UpdatePulse();
+	void ResetPulseTimer();
+	void StartPulseTimer();
 
 public:	
 	// Called every frame
@@ -143,8 +152,33 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
 	int32 InterpLocIndex;
 
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
 	class AShooterCharacter* Character;
+
+	// 이해안된것
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
+	int32 MaterialIndex; 	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
+	UMaterialInstanceDynamic* DynamicMaterialInstance;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
+	UMaterialInstance* MaterialInstance;
+	bool bCanChangeCustomDepth;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
+	class UCurveVector* PulseCurve;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
+	UCurveVector* InterpPulseCurve;
+	FTimerHandle PulseTimer;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
+	float PulseCurveTime;
+	UPROPERTY(VisibleAnywhere, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
+	float GlowAmount;
+	UPROPERTY(VisibleAnywhere, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
+	float FresnelExponent;
+	UPROPERTY(VisibleAnywhere, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
+	float FresnelReflectFraction;
+
+
 public:
 	FORCEINLINE UWidgetComponent* GetPickupWidget() const { return PickupWidget; }
 	FORCEINLINE USphereComponent* GetAreaSphere() const { return AreaSphere; }
@@ -159,4 +193,10 @@ public:
 
 	// ShooterCharacter클래스에서 호출할 함수
 	void StartItemCurve(AShooterCharacter* Char);
+
+	//Custom Depth관련(이해못함)
+	virtual void EnableCustomDepth();
+	virtual void DisableCustomDepth();
+	void EnableGlowMaterial();
+	void DisableGlowMaterial();
 };

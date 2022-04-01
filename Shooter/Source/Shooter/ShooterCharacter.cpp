@@ -131,6 +131,8 @@ void AShooterCharacter::BeginPlay()
 	}
 
 	EquipWeapon(SpawnDefaultWeapon()); // 기본무기 생성하고 장착하기
+	EquippedWeapon->DisableCustomDepth();
+	EquippedWeapon->DisableGlowMaterial();
 	
 	InitializeAmmoMap(); //  Starting9mmAmmo,StartingARAmmo에 따른 AmmoMap 초기화
 
@@ -469,6 +471,7 @@ void AShooterCharacter::TraceForItems()
 			{
 				// 아이템의 픽업위젯을 보여줘야함
 				TraceHitItem->GetPickupWidget()->SetVisibility(true);
+				TraceHitItem->EnableCustomDepth();
 			}
 		
 			if (TraceHitItemLastFrame) // 이미 저장한 아이템 포인터가 있다면
@@ -476,6 +479,7 @@ void AShooterCharacter::TraceForItems()
 				if (TraceHitItem != TraceHitItemLastFrame) // 새로운 아이템이 트레이스 되거나 TraceHitItemLastFrame이 nullptr인 상황
 				{
 					TraceHitItemLastFrame->GetPickupWidget()->SetVisibility(false);
+					TraceHitItemLastFrame->DisableCustomDepth();
 				}
 			}
 
@@ -485,6 +489,7 @@ void AShooterCharacter::TraceForItems()
 	else if (TraceHitItemLastFrame) // 오버랩된 아이템은없고 기존에 저장된 아이템클래스포인터가 nullptr이 아닌경우 기존거 위젯을 꺼줘야함
 	{
 		TraceHitItemLastFrame->GetPickupWidget()->SetVisibility(false);
+		TraceHitItemLastFrame->DisableCustomDepth();
 	}
 }
 
