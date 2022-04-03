@@ -349,6 +349,12 @@ private:// 할당들은 웬만하면 다 블루프린트에서 했음
 	float PickupSoundResetTime;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Items", meta = (AllowPrivateAccess = "true"))
 	float EquipSoundResetTime;
+
+	// 인벤토리
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory", meta = (AllowPrivateAccess = "true"))
+	TArray<AItem*> Inventory; 
+	const int32 INVENTORY_CAPACITY = 6; // 인벤 사이즈
+
 public:
 	FORCEINLINE USpringArmComponent* GetSpringArm() const { return CameraBoom; }
 	FORCEINLINE UCameraComponent* GetFollowCamera() const { return FollowCamera; }

@@ -178,6 +178,10 @@ private:
 	UPROPERTY(VisibleAnywhere, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
 	float FresnelReflectFraction;
 
+	// 인벤토리
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory", meta = (AllowPrivateAccess = "true"))
+	UTexture2D* IconBackground; // 아이템 인벤토리 아이콘의 배경, 레어도에따른 색깔
+
 
 public:
 	FORCEINLINE UWidgetComponent* GetPickupWidget() const { return PickupWidget; }
