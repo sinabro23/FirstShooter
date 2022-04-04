@@ -98,6 +98,9 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Crouch", Meta = (AllowPrivateAccess = "true"))
 	bool bTurningInPlace; //제자리 돌기할때 true
 
+	//Equipping
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Crouch", Meta = (AllowPrivateAccess = "true"))
+	bool bEquipping;
 
 
 };

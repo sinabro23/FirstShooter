@@ -14,6 +14,7 @@ enum class ECombatState : uint8
 	ECS_Unoccupied UMETA(DisplayName = "Unoccupied"),
 	ECS_FireTimerInProgress UMETA(DisplayName = "FireTimerInProgress"),
 	ECS_Reloading UMETA(DisplayName = "Reloading"),
+	ECS_Equipping UMETA(DisplayName = "Equipping"),
 
 	ECS_MAX UMETA(DisplayName = "Default MAX")
 };
@@ -102,7 +103,7 @@ protected:
 	class AWeapon* SpawnDefaultWeapon();
 
 	// 무기장착해서 메쉬에 붙이기
-	void EquipWeapon(AWeapon* WeaponToEquip); 
+	void EquipWeapon(AWeapon* WeaponToEquip, bool bSwapping = false); 
 
 	// 장착중인 무기 바닥으로 버리기
 	void DropWeapon();
@@ -132,6 +133,10 @@ protected:
 	void FinishReloading(); // 리로드 몽타주의 애님노티파이로 호출될 함수, AmmoMap 업데이트 할것
 	bool CarryingAmmo(); // 현재 장착하고 있는 무기타입에 맞는 총알을 들고 있는지
 	
+	// 무기스왑
+	UFUNCTION(BlueprintCallable)
+	void FinishEquipping(); // Equipping Montage몽타주 애님노티파이로 호출될것
+
 	// 리로드 몽타주 애님노피타이에서 호출할 함수
 	UFUNCTION(BlueprintCallable)
 	void GrabClip();
@@ -299,6 +304,10 @@ private:// 할당들은 웬만하면 다 블루프린트에서 했음
 	// 재장전 애님몽타주
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	UAnimMontage* ReloadMontage;
+
+	// 무기 스왑 몽타주
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAccess = "true"))
+	UAnimMontage* EquipMontage;
 
 	// 재장전 탄창 버리고 끼는것
 	// 재장전할때 처음 탄창을 잡을때의 탄창 트랜스폼

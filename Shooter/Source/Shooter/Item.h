@@ -71,7 +71,7 @@ protected:
 	// Get interp location based on the item type
 	FVector GetInterpLocation();
 
-	void PlayPickupSound();
+	void PlayPickupSound(bool bForcePlaySound = false);
 	
 	//Custom Depth관련(이해못함)
 	virtual void InitializeCustomDepth();
@@ -86,7 +86,7 @@ public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
-	void PlayEquipSound(); // 슈터캐릭터에서 호출됨
+	void PlayEquipSound(bool bForcePlaySound = false); // 슈터캐릭터에서 호출됨
 private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly , Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
 	class UBoxComponent* CollsionBox; // 라인트레이스했을때 충돌하면 아이템 HUD보여줄 콜리전
@@ -187,6 +187,8 @@ private:
 	UTexture2D* IconAmmo;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory", meta = (AllowPrivateAccess = "true"))
 	int32 SlotIndex; // 인벤토리 배열의 슬롯번호
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory", meta = (AllowPrivateAccess = "true"))
+	bool bCharacterInvetoryFull;
 
 
 public:
@@ -200,12 +202,14 @@ public:
 	FORCEINLINE int32 GetItemCount() const { return ItemCount; }
 	FORCEINLINE int32 GetSlotIndex() const { return SlotIndex; }
 	FORCEINLINE void SetSlotIndex(int32 Index) { SlotIndex = Index; }
+	FORCEINLINE void SetCharacter(AShooterCharacter* Char) { Character = Char; }
+	FORCEINLINE void SetCharacterInventoryFull(bool bFull) { bCharacterInvetoryFull = bFull; }
 
 	void SetItemState(EItemState State); // SetItemProperties도 같이함
 
 
 	// ShooterCharacter클래스에서 호출할 함수
-	void StartItemCurve(AShooterCharacter* Char);
+	void StartItemCurve(AShooterCharacter* Char, bool bForcePlaySound = false);
 
 	//Custom Depth관련(이해못함)
 	virtual void EnableCustomDepth();
