@@ -35,6 +35,9 @@ public:
 	int32 ItemCount;
 };
 
+// 델레게이트로 현재 슬롯인덱스 보내기
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FEquipItemDelegate, int32, CurrentSlotIndex, int32, NewSlotIndex);
+
 UCLASS()
 class SHOOTER_API AShooterCharacter : public ACharacter
 {
@@ -148,6 +151,15 @@ protected:
 	void PickupAmmo(class AAmmo* Ammo);
 
 	void InitializeInterpLocations();
+	
+	//인벤관련()
+	void FKeyPressed();
+	void OneKeyPressed();
+	void TwoKeyPressed();
+	void ThreeKeyPressed();
+	void FourKeyPressed();
+	void FiveKeyPressed();
+	void ExchangeInvetoryItems(int32 CurrentItemIndex, int32 NewItemIndex);
 
 
 public:	
@@ -354,6 +366,9 @@ private:// 할당들은 웬만하면 다 블루프린트에서 했음
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory", meta = (AllowPrivateAccess = "true"))
 	TArray<AItem*> Inventory; 
 	const int32 INVENTORY_CAPACITY = 6; // 인벤 사이즈
+	// 인벤토리의 SlotIndex를 보내줄 델레게이트
+	UPROPERTY(BlueprintAssignable, Category = "Delegates", meta = (AllowPrivateAccess = "true"))
+	FEquipItemDelegate EquipItemDelegate;
 
 public:
 	FORCEINLINE USpringArmComponent* GetSpringArm() const { return CameraBoom; }
