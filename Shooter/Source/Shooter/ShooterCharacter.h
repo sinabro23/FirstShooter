@@ -38,6 +38,7 @@ public:
 
 // 델레게이트로 현재 슬롯인덱스 보내기
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FEquipItemDelegate, int32, CurrentSlotIndex, int32, NewSlotIndex);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FHighlightIconDelegate, int32, SlotIndex, bool, bStartAnimation);
 
 UCLASS()
 class SHOOTER_API AShooterCharacter : public ACharacter
@@ -165,6 +166,10 @@ protected:
 	void FourKeyPressed();
 	void FiveKeyPressed();
 	void ExchangeInvetoryItems(int32 CurrentItemIndex, int32 NewItemIndex);
+	int32 GetEmptyInventorySlot();
+
+	void HighlightInventorySlot();
+
 
 
 public:	
@@ -379,6 +384,12 @@ private:// 할당들은 웬만하면 다 블루프린트에서 했음
 	UPROPERTY(BlueprintAssignable, Category = "Delegates", meta = (AllowPrivateAccess = "true"))
 	FEquipItemDelegate EquipItemDelegate;
 
+	UPROPERTY(BlueprintAssignable, Category = "Delegates", meta = (AllowPrivateAccess = "true"))
+	FHighlightIconDelegate HightlightIconDelegate; // Icon Animaion실행하기위한 Slot 정보를 건네주기위한 델레게이트
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory", meta = (AllowPrivateAccess = "true"))
+	int32 HighlightedSlot; // 현재 하이라이트된 인벤 슬롯번호
+
 public:
 	FORCEINLINE USpringArmComponent* GetSpringArm() const { return CameraBoom; }
 	FORCEINLINE UCameraComponent* GetFollowCamera() const { return FollowCamera; }
@@ -410,4 +421,6 @@ public:
 
 	void StartPickupSoundTimer();
 	void StartEquipSoundTimer();
+
+	void UnHighlightInventorySlot();
 };
