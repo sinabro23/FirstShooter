@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Animation/AnimInstance.h"
+#include "WeaponType.h"
 #include "ShooterAnimInstance.generated.h"
 
 UENUM(BlueprintType)
@@ -102,5 +103,10 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Crouch", Meta = (AllowPrivateAccess = "true"))
 	bool bEquipping;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Combat", Meta = (AllowPrivateAccess = "true"))
+	EWeaponType EQuippedWeaponType; // 현재 착용중인 무기의 타입
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Combat", Meta = (AllowPrivateAccess = "true"))
+	bool bShouldUseFABRIK; //FABRIK쓰면 손위치 고정시킨데에서 움직이지않음. 장전할때 이상함
 
 };
