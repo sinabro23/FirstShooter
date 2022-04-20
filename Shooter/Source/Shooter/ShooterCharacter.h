@@ -218,12 +218,6 @@ private:// 할당들은 웬만하면 다 블루프린트에서 했음
 	///////////////////////////////////////////////
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAccess = "true"))
-	class USoundCue* FireSound;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAccess = "true"))
-	UParticleSystem* MuzzleFlash; // 총구 파티클
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	UAnimMontage* HipFireMontage; // 총쏘는 애니메이션 몽타주
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAccess = "true"))
@@ -266,7 +260,6 @@ private:// 할당들은 웬만하면 다 블루프린트에서 했음
 	// 자동사격 관련
 	bool bFireButtonPressed;
 	bool bShouldFire; // 총을 쏴야할지 안쏴야할지
-	float AutomaticFireRate; // 연사속도
 	FTimerHandle AutoFireTimer; // 격발 사이의 타이머
 	//////////////////////////////
 

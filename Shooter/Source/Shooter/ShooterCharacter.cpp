@@ -47,7 +47,6 @@ AShooterCharacter::AShooterCharacter():
 	ShootTimeDuration(0.05f),
 	bFiringBullet(false),
 	//자동사격 관련
-	AutomaticFireRate(0.1f),// 연사속도
 	bShouldFire(true),
 	bFireButtonPressed(false),
 	//// 아이템 트레이스 변수
@@ -227,20 +226,15 @@ void AShooterCharacter::LookUp(float Value)
 
 void AShooterCharacter::FireWeapon()
 {
-	if (!EquippedWeapon)
-		return;
-
-	if (CombatState != ECombatState::ECS_Unoccupied) 
-		return;
+	if (EquippedWeapon == nullptr) return;
+	if (CombatState != ECombatState::ECS_Unoccupied) return;
 
 	if (WeaponHasAmmo())
 	{
 		PlayFireSound();
 		SendBullet();
 		PlayGunfireMontage();
-		// 크로스헤어 벌어지는거를 위한 타이머 세팅
-		StartCrosshairBulletFire();
-		EquippedWeapon->DecrementAmmo(); // 무기에서 총알 하나 감소
+		EquippedWeapon->DecrementAmmo();
 
 		StartFireTimer();
 	}
@@ -266,7 +260,7 @@ bool AShooterCharacter::GetBeamEndLocation(const FVector& MuzzleSocketLocation, 
 	// 총구로부터 트레이스
 	FHitResult WeaponTraceHit;
 	const FVector WeaponTraceStart = MuzzleSocketLocation;
-	const FVector StartToEnd = OutBeamLocation - MuzzleSocketLocation; // 방향벡터
+	const FVector StartToEnd = OutBeamLocation - MuzzleSocketLocation; // 방향벡터 // 
 	const FVector WeaponTraceEnd = MuzzleSocketLocation + StartToEnd * 1.25f; 
 	
 	GetWorld()->LineTraceSingleByChannel(
@@ -400,8 +394,14 @@ void AShooterCharacter::FireButtonReleased()
 
 void AShooterCharacter::StartFireTimer()
 {
+	if (EquippedWeapon == nullptr) return;
 	CombatState = ECombatState::ECS_FireTimerInProgress;
-	GetWorldTimerManager().SetTimer(AutoFireTimer, this, &AShooterCharacter::AutoFireReset, AutomaticFireRate);
+
+	GetWorldTimerManager().SetTimer(
+		AutoFireTimer,
+		this,
+		&AShooterCharacter::AutoFireReset,
+		EquippedWeapon->GetAutoFireRate());
 }
 
 void AShooterCharacter::AutoFireReset()
@@ -625,10 +625,10 @@ bool AShooterCharacter::WeaponHasAmmo()
 
 void AShooterCharacter::PlayFireSound()
 {
-	// Play Sound
-	if (FireSound)
+	// Play fire sound
+	if (EquippedWeapon->GetFireSound())
 	{
-		UGameplayStatics::PlaySound2D(this, FireSound);
+		UGameplayStatics::PlaySound2D(this, EquippedWeapon->GetFireSound());
 	}
 }
 
@@ -640,9 +640,9 @@ void AShooterCharacter::SendBullet()
 	{
 		const FTransform SocketTransform = BarrelSocket->GetSocketTransform(EquippedWeapon->GetItemMesh());
 
-		if (MuzzleFlash) // 블루프린트에서 할당했음
+		if (EquippedWeapon->GetMuzzleFlash()) // 블루프린트에서 할당했음
 		{
-			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), MuzzleFlash, SocketTransform);
+			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), EquippedWeapon->GetMuzzleFlash(), SocketTransform);
 		}
 
 		FVector BeamEnd; // 총알 최종위치 넣어줄 곳

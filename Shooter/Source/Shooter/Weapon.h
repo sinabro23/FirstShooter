@@ -55,6 +55,33 @@ struct FWeaponDataTable : public FTableRowBase
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSubclassOf<UAnimInstance> AnimBP;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UTexture2D* CrosshairMiddle;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UTexture2D* CrosshairLeft;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UTexture2D* CrosshairRight;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UTexture2D* CrosshairBottom;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UTexture2D* CrosshairTop;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float AutoFireRate;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	class UParticleSystem* MuzzleFlash;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	USoundCue* FireSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FName BoneToHide;
 };
 
 /**
@@ -74,6 +101,7 @@ protected:
 	void StopFalling();
 
 	virtual void OnConstruction(const FTransform& Transform) override;
+	virtual void BeginPlay() override;
 	
 private:
 	// 무기 던지는 것 관련 
@@ -109,6 +137,38 @@ private:
 	UDataTable* WeaponDataTable;
 
 	int32 PreviousMaterialIndex;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "DataTable", meta = (AllowPrivateAccess = "true"))
+	UTexture2D* CrosshairMiddle;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "DataTable", meta = (AllowPrivateAccess = "true"))
+	UTexture2D* CrosshairLeft;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "DataTable", meta = (AllowPrivateAccess = "true"))
+	UTexture2D* CrosshairRight;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "DataTable", meta = (AllowPrivateAccess = "true"))
+	UTexture2D* CrosshairBottom;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "DataTable", meta = (AllowPrivateAccess = "true"))
+	UTexture2D* CrosshairTop;
+
+	/** The speed at which automatic fire happens */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = DataTable, meta = (AllowPrivateAccess = "true"))
+	float AutoFireRate;
+
+	/** Particle system spawned at the BarrelSocket */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = DataTable, meta = (AllowPrivateAccess = "true"))
+	UParticleSystem* MuzzleFlash;
+
+	/** Sound played when the weapon is fired */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = DataTable, meta = (AllowPrivateAccess = "true"))
+	USoundCue* FireSound;
+
+	/** Name of the bone to hide on the weapon mesh */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = DataTable, meta = (AllowPrivateAccess = "true"))
+	FName BoneToHide;
+
 public:
 	// 무기에 Impulse를 준다
 	void ThrowWeapon();
@@ -125,6 +185,9 @@ public:
 	FORCEINLINE void SetReloadMontageSection(FName Name) { ReloadMontageSection = Name; }
 	FORCEINLINE FName GetClipBoneName() const { return ClipBoneName; }
 	FORCEINLINE void SetClipBoneName(FName Name) { ClipBoneName = Name; }
+	FORCEINLINE float GetAutoFireRate() const { return AutoFireRate; }
+	FORCEINLINE UParticleSystem* GetMuzzleFlash() const { return MuzzleFlash; }
+	FORCEINLINE USoundCue* GetFireSound() const { return FireSound; }
 
 	void ReloadAmmo(int32 Amount);
 
