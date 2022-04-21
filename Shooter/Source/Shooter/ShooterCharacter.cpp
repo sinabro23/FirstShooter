@@ -240,48 +240,45 @@ void AShooterCharacter::FireWeapon()
 	}
 }
 
-bool AShooterCharacter::GetBeamEndLocation(const FVector& MuzzleSocketLocation, FVector& OutBeamLocation)
+bool AShooterCharacter::GetBeamEndLocation(const FVector& MuzzleSocketLocation, FHitResult& OutHitResult)
 {
-	// 크로스헤어로부터 트레이스
+	FVector OutBeamLocation;
+	// Check for crosshair trace hit
 	FHitResult CrosshairHitResult;
 	bool bCrosshairHit = TraceUnderCrosshairs(CrosshairHitResult, OutBeamLocation);
+
 	if (bCrosshairHit)
 	{
-		// 잠정적인 빔 로케이션 (총구로부터 트레이스 해야함 아직)
+		// Tentative beam location - still need to trace from gun
 		OutBeamLocation = CrosshairHitResult.Location;
 	}
-	else // 크로스헤어로부터 트레이스해서 충돌 없음
+	else // no crosshair trace hit
 	{
-		// OutBeamLocation은 라인트레이스의 End 로케이션으로 설정됨. TraceUnderCrosshairs함수에의해
+		// OutBeamLocation is the End location for the line trace
 	}
-	///////////////////////////////////
-	
-	
-	// 총구로부터 트레이스
-	FHitResult WeaponTraceHit;
-	const FVector WeaponTraceStart = MuzzleSocketLocation;
-	const FVector StartToEnd = OutBeamLocation - MuzzleSocketLocation; // 방향벡터 // 
-	const FVector WeaponTraceEnd = MuzzleSocketLocation + StartToEnd * 1.25f; 
-	
+
+	// Perform a second trace, this time from the gun barrel
+	const FVector WeaponTraceStart{ MuzzleSocketLocation };
+	const FVector StartToEnd{ OutBeamLocation - WeaponTraceStart };
+	const FVector WeaponTraceEnd{ MuzzleSocketLocation + StartToEnd * 1.25f };
 	GetWorld()->LineTraceSingleByChannel(
-		WeaponTraceHit,
+		OutHitResult,
 		WeaponTraceStart,
 		WeaponTraceEnd,
 		ECollisionChannel::ECC_Visibility);
-
-	if (WeaponTraceHit.bBlockingHit) // 총구로부터 트레이스해서 무언가 맞았다면
+	if (!OutHitResult.bBlockingHit) // object between barrel and BeamEndPoint?
 	{
-		OutBeamLocation = WeaponTraceHit.Location;
-		return true;
+		OutHitResult.Location = OutBeamLocation;
+		return false;
 	}
 
-	return false;
+	return true;
 }
 
 void AShooterCharacter::AimingButtonPressed()
 {
 	bAimingButtonPressed = true;
-	if (CombatState != ECombatState::ECS_Reloading)
+	if (CombatState != ECombatState::ECS_Reloading && CombatState != ECombatState::ECS_Equipping)
 	{
 		Aim();
 	}
@@ -765,6 +762,10 @@ bool AShooterCharacter::CarryingAmmo()
 void AShooterCharacter::FinishEquipping()
 {
 	CombatState = ECombatState::ECS_Unoccupied;
+	if (bAimingButtonPressed)
+	{
+		Aim();
+	}
 }
 
 void AShooterCharacter::GrabClip()
@@ -954,6 +955,11 @@ void AShooterCharacter::ExchangeInvetoryItems(int32 CurrentItemIndex, int32 NewI
 
 	if (bCanExchange)
 	{
+		if (bAiming)
+		{
+			StopAiming();
+		}
+
 		auto OldEquippedWeapon = EquippedWeapon;
 		auto NewWeapon = Cast<AWeapon>(Inventory[NewItemIndex]);
 		EquipWeapon(NewWeapon);

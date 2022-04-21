@@ -67,7 +67,7 @@ protected:
 	void FireWeapon();
 
 	// 총쏘면 최종 맞는 로케이션 구하는 함수
-	bool GetBeamEndLocation(const FVector& MuzzleSocketLocation, FVector& OutBeamLocation);
+	bool GetBeamEndLocation(const FVector& MuzzleSocketLocation, FHitResult& OutHitResult);
 
 	// 줌관련
 	void AimingButtonPressed();
