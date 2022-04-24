@@ -16,10 +16,33 @@ public:
 	// Sets default values for this character's properties
 	AEnemy();
 
+	UFUNCTION(BlueprintNativeEvent)
+	void ShowHealthBar();
+	void ShowHealthBar_Implementation();
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void HideHealthBar();
+
+	void Die();
+
+	void PlayHitMontage(FName Section, float PlayRate = 1.0f);
+
+	void ResetHitReactTimer();
+
+	UFUNCTION(BlueprintCallable)
+	void StoreHitNumber(UUserWidget* HitNumber, FVector Location);
+
+	UFUNCTION()
+	void DestroyHitNumber(UUserWidget* HitNumber);
+
+	void UpdateHitNumbers();
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+
+private:
 	/** Particles to spawn when hit by bullets */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	class UParticleSystem* ImpactParticles;
@@ -28,6 +51,45 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	class USoundCue* ImpactSound;
 
+	/** Current health of the enemy */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	float Health = 100.f;
+
+	/** Maximum health of the enemy */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	float MaxHealth = 100.f;
+
+	/** Name of the head bone */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	FString HeadBone;
+
+	/** Time to display health bar once shot */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	float HealthBarDisplayTime = 4.f;
+
+	FTimerHandle HealthBarTimer;
+
+	/** Montage containing Hit and Death animations */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	UAnimMontage* HitMontage;
+
+	FTimerHandle HitReactTimer;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	float HitReactTimeMin = 0.5f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	float HitReactTimeMax = 0.75f;
+
+	bool bCanHitReact = true;
+
+	/** Map to store HitNumber widgets and their hit locations */
+	UPROPERTY(VisibleAnywhere, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	TMap<UUserWidget*, FVector> HitNumbers;
+
+	/** Time before a HitNumber is removed from the screen */
+	UPROPERTY(EditAnywhere, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	float HitNumberDestroyTime = 1.5f;
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -36,4 +98,13 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 	virtual void BulletHit_Implementation(FHitResult HitResult) override;
+
+	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
+
+	FORCEINLINE FString GetHeadBone() const { return HeadBone; }
+
+	UFUNCTION(BlueprintImplementableEvent) // 블루프린트에서 정의함
+	void ShowHitNumber(int32 Damage, FVector HitLocation, bool bHeadShot);
+
+
 };

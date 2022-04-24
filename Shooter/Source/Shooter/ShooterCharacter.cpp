@@ -17,6 +17,7 @@
 #include "Components/BoxComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Ammo.h"
+#include "Enemy.h"
 
 // Sets default values
 AShooterCharacter::AShooterCharacter():
@@ -642,23 +643,77 @@ void AShooterCharacter::SendBullet()
 			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), EquippedWeapon->GetMuzzleFlash(), SocketTransform);
 		}
 
-		FVector BeamEnd; // 총알 최종위치 넣어줄 곳
-		bool bBeamEnd = GetBeamEndLocation(SocketTransform.GetLocation(), BeamEnd);
+		FHitResult BeamHitResult;
+		bool bBeamEnd = GetBeamEndLocation(
+			SocketTransform.GetLocation(), BeamHitResult);
 		if (bBeamEnd)
 		{
-			if (ImpactParticles)
+			// Does hit Actor implement BulletHitInterface?
+			if (BeamHitResult.Actor.IsValid())
 			{
-				UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ImpactParticles, BeamEnd);
-			}
+				IBulletHitInterface* BulletHitInterface = Cast<IBulletHitInterface>(BeamHitResult.Actor.Get());
+				if (BulletHitInterface)
+				{
+					BulletHitInterface->BulletHit_Implementation(BeamHitResult);
+				}
 
-			UParticleSystemComponent* Beam = UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), BeamParticles, SocketTransform);
-			if (Beam)
-			{
-				Beam->SetVectorParameter(FName("Target"), BeamEnd);
+				AEnemy* HitEnemy = Cast<AEnemy>(BeamHitResult.GetActor());
+				if (HitEnemy)
+				{
+					int32 Damage = 0;
+					if (BeamHitResult.BoneName.ToString() == HitEnemy->GetHeadBone())
+					{
+						// Head shot
+						Damage = EquippedWeapon->GetHeadShotDamage();
+						UGameplayStatics::ApplyDamage(
+							BeamHitResult.GetActor(),
+							EquippedWeapon->GetHeadShotDamage(),
+							GetController(),
+							this,
+							UDamageType::StaticClass());
+
+						HitEnemy->ShowHitNumber(Damage, BeamHitResult.Location, true);
+					}
+					else
+					{
+						// Body shot
+						Damage = EquippedWeapon->GetDamage();
+						UGameplayStatics::ApplyDamage(
+							BeamHitResult.GetActor(),
+							EquippedWeapon->GetDamage(),
+							GetController(),
+							this,
+							UDamageType::StaticClass());
+
+						HitEnemy->ShowHitNumber(Damage, BeamHitResult.Location, false);
+					}
+
+					
+				}
+				else
+				{
+					// Spawn default particles
+					if (ImpactParticles)
+					{
+						UGameplayStatics::SpawnEmitterAtLocation(
+							GetWorld(),
+							ImpactParticles,
+							BeamHitResult.Location);
+					}
+				}
+
+				UParticleSystemComponent* Beam = UGameplayStatics::SpawnEmitterAtLocation(
+					GetWorld(),
+					BeamParticles,
+					SocketTransform);
+				if (Beam)
+				{
+					Beam->SetVectorParameter(FName("Target"), BeamHitResult.Location);
+				}
 			}
 		}
-	}
 
+	}
 }
 
 void AShooterCharacter::PlayGunfireMontage()
