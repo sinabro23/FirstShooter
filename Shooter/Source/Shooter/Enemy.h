@@ -90,6 +90,16 @@ private:
 	/** Time before a HitNumber is removed from the screen */
 	UPROPERTY(EditAnywhere, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	float HitNumberDestroyTime = 1.5f;
+
+	/** Behavior tree for the AI Character */
+	UPROPERTY(EditAnywhere, Category = "Behavior Tree", meta = (AllowPrivateAccess = "true"))
+	class UBehaviorTree* BehaviorTree;
+
+	/** Point for the enemy to move to */
+	UPROPERTY(EditAnywhere, Category = "Behavior Tree", meta = (AllowPrivateAccess = "true", MakeEditWidget = "true"))
+	FVector PatrolPoint;
+
+	class AEnemyController* EnemyController;
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -106,5 +116,5 @@ public:
 	UFUNCTION(BlueprintImplementableEvent) // 블루프린트에서 정의함
 	void ShowHitNumber(int32 Damage, FVector HitLocation, bool bHeadShot);
 
-
+	FORCEINLINE UBehaviorTree* GetBehaviorTree() const { return BehaviorTree; }
 };
