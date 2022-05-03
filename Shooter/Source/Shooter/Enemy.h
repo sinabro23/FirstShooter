@@ -72,6 +72,10 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void DeactivateRightWeapon();
 
+	void DoDamage(class AShooterCharacter* Victim);
+
+	void SpawnBlood(AShooterCharacter* Victim, FName SocketName);
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -177,6 +181,17 @@ private:
 	/** Collision volume for the right weapon */
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	UBoxComponent* RightWeaponCollision;
+
+	/** Base damage for enemy */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	float BaseDamage = 20.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	FName LeftWeaponSocket = TEXT("FX_Trail_L_01");
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	FName RightWeaponSocket = TEXT("FX_Trail_R_01");
+
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
